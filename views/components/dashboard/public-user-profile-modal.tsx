@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Star, Trophy, Calendar, MapPin } from "lucide-react"
-import type { UserProfile } from "@/models/types/game"
+import type { UserProfile } from "@/lib/db/models/types/game"
 import Image from "next/image"
 
 interface PublicUserProfileModalProps {

@@ -14,6 +14,7 @@ import { Home, Calendar, Trophy, Bot, Bell, User, LogOut } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { signOut } from "next-auth/react";
 
 const menuItems = [
   {
@@ -83,10 +84,12 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="text-white hover:bg-green-700">
-              <Link href="/">
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </Link>
+             <button
+  onClick={handleLogout}
+  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
+>
+  Logout
+</button>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -94,3 +97,7 @@ export function AppSidebar() {
     </Sidebar>
   )
 }
+
+const handleLogout = () => {
+  signOut({ callbackUrl: "/login" });
+};

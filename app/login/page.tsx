@@ -1,5 +1,5 @@
-//C:\gameon-v1\app\signup
-import { SignUpForm } from "@/components/auth/signup-form"
+// C:\gameon-v1\app\login
+import { LoginForm } from "@/components/auth/login-form"
 import { StatsCards } from "@/components/auth/stats-cards"
 import { Logo } from "@/components/ui/logo"
 
@@ -36,7 +36,7 @@ export default function LoginPage() {
 
         {/* Right Side - Login Form */}
         <div className="flex justify-center lg:justify-end">
-          <SignUpForm />
+          <LoginForm />
         </div>
       </div>
     </div>

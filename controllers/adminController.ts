@@ -1,5 +1,5 @@
-import type { GameReport } from "@/models/types/admin"
-import { mockReports } from "@/models/data/mockReports"
+import type { GameReport } from "@/lib/db/models/types/admin"
+import { mockReports } from "@/lib/db/models/data/mockReports"
 
 export class AdminController {
   static login(email: string, password: string): boolean {

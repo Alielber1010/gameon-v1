@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Users, Flag } from "lucide-react"
-import type { Game } from "@/models/types/game"
+import type { Game } from "@/lib/db/models/types/game"
 import Image from "next/image"
 
 interface GameCardProps {

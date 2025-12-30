@@ -1,197 +1,235 @@
-"use client"
+//C:\gameon-v1\components\auth\signup-form.tsx
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, EyeOff, Mail, Calendar } from "lucide-react"
-import Link from "next/link"
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FcGoogle } from "react-icons/fc";
+import { HiEye, HiEyeOff } from "react-icons/hi"; 
+import { useRouter } from 'next/navigation';
 
 export function SignUpForm() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    birthDate: "",
-    gender: "",
-    password: "",
-    confirmPassword: "",
-  })
-  const router = useRouter()
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [fieldError, setFieldError] = useState({ email: "", password: "" });
+  const [generalError, setGeneralError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  // Track password input values in state
+  const [passwordValue, setPasswordValue] = useState('');
+  const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
 
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setFieldError({ email: "", password: "" });
+    setGeneralError("");
 
-    // Basic validation
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!")
-      return
+    const form = e.target as HTMLFormElement;
+    const firstName = (form.elements.namedItem("firstName") as HTMLInputElement).value.trim();
+    const lastName = (form.elements.namedItem("lastName") as HTMLInputElement).value.trim();
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
+    // Use state values instead of accessing form elements directly for password checks
+    const password = passwordValue;
+    const confirm = confirmPasswordValue;
+
+
+    if (password !== confirm) {
+      setFieldError({ ...fieldError, password: "Passwords do not match" });
+      setIsLoading(false);
+      return;
     }
 
-    // TODO: Replace with actual API call
-    if (formData.name && formData.email && formData.password) {
-      // Store user data temporarily (in real app, this would be handled by backend)
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          birthDate: formData.birthDate,
-          gender: formData.gender,
-        }),
-      )
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName, email, password }),
+      });
 
-      router.push("/dashboard")
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.error?.toLowerCase().includes("email")) {
+          setFieldError({ ...fieldError, email: data.error });
+        } else {
+          setGeneralError("An unexpected error occurred during signup.");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      const signInResult = await signIn("credentials", { 
+        email, 
+        password, 
+        redirect: false
+      });
+
+      if (signInResult?.error) {
+        setGeneralError("Sign up successful, but automatic sign in failed. Please sign in manually.");
+        setIsLoading(false);
+      } else if (signInResult?.ok) {
+        router.push("/dashboard");
+      }
+
+    } catch (error) {
+      setGeneralError("An unexpected error occurred. Please try again.");
+      setIsLoading(false);
     }
-  }
+  };
+  
+  // ... (handleGoogleSignIn function remains the same)
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await signIn("google", { callbackUrl: "/dashboard" });
+    } catch {
+      setIsGoogleLoading(false);
+    }
+  };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">SIGN UP</CardTitle>
-        <CardDescription>Join your sports community</CardDescription>
+    <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur">
+      {/* ... (CardHeader and Google Sign In remain the same) ... */}
+      <CardHeader className="text-center space-y-3">
+        <CardTitle className="text-3xl font-bold text-gray-900">Create Account</CardTitle>
+        <CardDescription className="text-base text-gray-600">
+          Join your local sports community
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSignUp} className="space-y-4">
-          {/* Name Field */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+
+      <CardContent className="pt-6 space-y-6">
+        <Button
+          onClick={handleGoogleSignIn}
+          disabled={isGoogleLoading}
+          size="lg"
+          variant="outline"
+          className="w-full h-14 text-lg font-semibold border-2 hover:border-green-600 hover:bg-green-50 transition-all duration-300 flex items-center justify-center gap-4 shadow-md"
+        >
+          {isGoogleLoading ? (
+            <>
+              <div className="w-6 h-6 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+              Signing in...
+            </>
+          ) : (
+            <>
+              <FcGoogle className="w-7 h-7" />
+              Continue with Google
+            </>
+          )}
+        </Button>
+
+        <div className="relative py-4">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-xs text-gray-500 uppercase">
+            <span className="bg-white px-2">Or sign up with email</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSignup} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <Input
-              id="name"
-              type="text"
-              placeholder="Enter your name"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
+              name="firstName"
+              placeholder="First Name"
               required
+              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md"
+            />
+            <Input
+              name="lastName"
+              placeholder="Last Name"
+              required
+              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md"
             />
           </div>
 
-          {/* Email Field */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <div className="relative">
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
+          <div className="relative">
+            <Input
+              name="email"
+              type="email"
+              placeholder="Email Address"
+              required
+              className={`border ${fieldError.email ? "border-red-500" : "border-gray-300"} focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md`}
+            />
+            {fieldError.email && <p className="text-red-500 text-sm mt-1">{fieldError.email}</p>}
           </div>
 
-          {/* Birth Date Field */}
-          <div className="space-y-2">
-            <Label htmlFor="birthDate">Birth Date</Label>
-            <div className="relative">
-              <Input
-                id="birthDate"
-                type="date"
-                placeholder="mm/dd/yy"
-                value={formData.birthDate}
-                onChange={(e) => handleInputChange("birthDate", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
-          </div>
-
-          {/* Gender Field */}
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Male / Female" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Password Field */}
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
+          {/* --- Updated Password Input --- */}
+          <div className="relative">
+            <Input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              required
+              value={passwordValue}
+              onChange={(e) => setPasswordValue(e.target.value)}
+              // Ensure ample padding on the right for the icon
+              className={`border ${fieldError.password ? "border-red-500" : "border-gray-300"} focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md pr-10`}
+            />
+            {/* Conditionally render the icon only if there is a value */}
+            {passwordValue && (
+              <span
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-500 hover:text-green-600 w-5 h-5" // Added size classes
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
               >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-            </div>
+                {/* Ensure only one component is returned by the condition */}
+                {showPassword ? <HiEyeOff /> : <HiEye/>}
+              </span>
+            )}
+            {fieldError.password && <p className="text-red-500 text-sm mt-1">{fieldError.password}</p>}
           </div>
 
-          {/* Confirm Password Field */}
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+          {/* --- Updated Confirm Password Input --- */}
+          <div className="relative">
+            <Input
+              name="confirmPassword"
+              type={showConfirm ? "text" : "password"}
+              placeholder="Confirm Password"
+              required
+              value={confirmPasswordValue} // Control value with state
+              onChange={(e) => setConfirmPasswordValue(e.target.value)} // Update state on change
+              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md pr-10"
+            />
+            {/* Conditionally render the icon only if there is a value */}
+            {confirmPasswordValue && (
+              <span
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-500 hover:text-green-600"
+                onClick={() => setShowConfirm(!showConfirm)}
               >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-            </div>
+                {showConfirm ? <HiEyeOff /> : <HiEye />}
+              </span>
+            )}
           </div>
-
-          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-            Sign up
+          
+          {/* ... (Rest of the form remains the same) ... */}
+          <Button
+            type="submit"
+            disabled={isLoading}
+            size="lg"
+            className="w-full h-14 text-lg font-semibold bg-green-600 hover:bg-green-700 transition-colors rounded-md shadow-md"
+          >
+            {isLoading ? "Creating account..." : "Create Account"}
           </Button>
 
-          <div className="text-center text-sm">
-            {"Already have an account? "}
-            <Link href="/" className="text-green-600 hover:underline">
-              Sign in
-            </Link>
-          </div>
+          {generalError && <p className="text-center text-sm text-red-500 mt-2">{generalError}</p>}
         </form>
+
+        <p className="text-center text-xs text-gray-500 mt-4">
+          By continuing, you agree to our{" "}
+          <a href="#" className="underline hover:text-green-600">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="#" className="underline hover:text-green-600">
+            Privacy Policy
+          </a>
+        </p>
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,178 +1,70 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, EyeOff, Mail, Calendar } from "lucide-react"
-import Link from "next/link"
-import { AuthController } from "@/controllers/authController"
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function SignUpForm() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    birthDate: "",
-    gender: "",
-    password: "",
-    confirmPassword: "",
-  })
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault()
+    const form = e.target as HTMLFormElement;
+    const name = (form.elements.namedItem("name") as HTMLInputElement).value;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!")
-      return
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Something went wrong");
+      setIsLoading(false);
+      return;
     }
 
-    if (AuthController.signup(formData)) {
-      router.push("/dashboard")
-    }
-  }
+    // Auto-login after signup
+    await signIn("credentials", { email, password, callbackUrl: "/dashboard" });
+  };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">SIGN UP</CardTitle>
-        <CardDescription>Join your sports community</CardDescription>
+    <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur">
+      <CardHeader className="text-center space-y-3">
+        <CardTitle className="text-3xl font-bold text-gray-900">Create Account</CardTitle>
+        <CardDescription className="text-base text-gray-600">
+          Join your local sports community
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSignUp} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Enter your name"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              required
-            />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <div className="relative">
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
-          </div>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSignup} className="space-y-4">
+          <Input name="name" placeholder="Full Name" required />
+          <Input name="email" type="email" placeholder="Email Address" required />
+          <Input name="password" type="password" placeholder="Password" required />
 
-          <div className="space-y-2">
-            <Label htmlFor="birthDate">Birth Date</Label>
-            <div className="relative">
-              <Input
-                id="birthDate"
-                type="date"
-                placeholder="mm/dd/yy"
-                value={formData.birthDate}
-                onChange={(e) => handleInputChange("birthDate", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
-          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
 
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Select value={formData.gender} onValueChange={(value) => handleInputChange("gender", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Male / Female" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-            Sign up
+          <Button
+            type="submit"
+            disabled={isLoading}
+            size="lg"
+            className="w-full h-14 text-lg font-semibold bg-green-600 hover:bg-green-700"
+          >
+            {isLoading ? "Creating account..." : "Create Account"}
           </Button>
-
-          <div className="text-center text-sm">
-            {"Already have an account? "}
-            <Link href="/" className="text-green-600 hover:underline">
-              Sign in
-            </Link>
-          </div>
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,104 +1,68 @@
-"use client"
+// components/auth/login-form.tsx
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail } from "lucide-react"
-import Link from "next/link"
-import { AuthController } from "@/controllers/authController"
+import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FcGoogle } from "react-icons/fc";
+import { useState } from "react";
 
 export function LoginForm() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (AuthController.login(email, password)) {
-      router.push("/dashboard")
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await signIn("google", { callbackUrl: "/dashboard" });
+    } catch (error) {
+      setIsLoading(false);
+      // NextAuth will handle errors and redirect back with ?error=
     }
-  }
+  };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold">LOGIN</CardTitle>
-        <CardDescription>Access your sports community</CardDescription>
+    <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur">
+      <CardHeader className="text-center space-y-3">
+        <CardTitle className="text-3xl font-bold text-gray-900">Welcome Back</CardTitle>
+        <CardDescription className="text-base text-gray-600">
+          Sign in to find and join pickup games near you
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <div className="relative">
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pr-10"
-                required
-              />
-              <Mail className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-10"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <Eye className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Checkbox id="remember" />
-              <Label htmlFor="remember" className="text-sm">
-                Remember me
-              </Label>
-            </div>
-            <Link href="/forgot-password" className="text-sm text-green-600 hover:underline">
-              Forgot password?
-            </Link>
-          </div>
-
-          <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-            login
+      <CardContent className="pt-6">
+        <div className="space-y-6">
+          <Button
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+            size="lg"
+            variant="outline"
+            className="w-full h-14 text-lg font-semibold border-2 hover:border-green-600 hover:bg-green-50 transition-all duration-300 flex items-center justify-center gap-4 shadow-md"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-6 h-6 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                <FcGoogle className="w-7 h-7" />
+                Continue with Google
+              </>
+            )}
           </Button>
 
-          <div className="text-center text-sm">
-            {"Don't have an account? "}
-            <Link href="/signup" className="text-green-600 hover:underline">
-              Sign up
-            </Link>
-          </div>
-        </form>
+          <p className="text-center text-xs text-gray-500 mt-8">
+            By continuing, you agree to our{" "}
+            <a href="#" className="underline hover:text-green-600">
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a href="#" className="underline hover:text-green-600">
+              Privacy Policy
+            </a>
+          </p>
+        </div>
       </CardContent>
     </Card>
-  )
+  );
 }

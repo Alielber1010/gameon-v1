@@ -1,7 +1,7 @@
 "use client"
 
 import { GameCard } from "./game-card"
-import type { Game } from "@/models/types/game"
+import type { Game } from "@/lib/db/models/types/game"
 
 interface GameGridProps {
   games: Game[]

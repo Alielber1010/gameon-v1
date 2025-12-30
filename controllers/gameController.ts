@@ -1,6 +1,6 @@
-import type { Game, UserProfile } from "@/models/types/game"
-import { mockGames, joinedGames } from "@/models/data/mockGames"
-import { mockUserProfiles } from "@/models/data/mockUsers"
+import type { Game, UserProfile } from "@/lib/db/models/types/game"
+import { mockGames, joinedGames } from "@/lib/db/models/data/mockGames"
+import { mockUserProfiles } from "@/lib/db/models/data/mockUsers"
 
 export class GameController {
   static getAllGames(): Game[] {

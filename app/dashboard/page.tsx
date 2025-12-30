@@ -9,7 +9,10 @@ import { ReportModal } from "@/components/dashboard/report-modal"
 import { CreateGameModal } from "@/components/dashboard/create-game-modal"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Plus } from "lucide-react"
-import type { Game } from "@/types/game"
+import type { Game } from "@lib/db/models/types/game"
+import { useSession } from "next-auth/react"
+import { redirect } from "next/navigation"
+import { signOut } from "next-auth/react";
 
 // Mock data - Replace with API calls
 const mockGames: Game[] = [
@@ -60,7 +63,11 @@ const mockGames: Game[] = [
   },
 ]
 
-export default function DashboardPage() {
+
+
+export default async function DashboardPage() {
+const { data: session, status } = useSession()
+  
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [reportGame, setReportGame] = useState<Game | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -121,3 +128,7 @@ export default function DashboardPage() {
     </div>
   )
 }
+
+const handleLogout = () => {
+  signOut({ callbackUrl: "/login" });
+};

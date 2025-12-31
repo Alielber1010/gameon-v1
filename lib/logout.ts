@@ -1,18 +1,13 @@
 import { signOut } from "next-auth/react";
 
-
-
-const handleLogout = () => {
-signOut({ callbackUrl: "/login" });
+/**
+ * Reusable logout function that can be used anywhere in the app
+ * @param callbackUrl - Optional URL to redirect to after logout (defaults to "/login")
+ */
+export const handleLogout = (callbackUrl: string = "/login") => {
+  signOut({ callbackUrl });
 };
 
-
-//  <button
-//   onClick={handleLogout}
-//   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md"
-// >
-//   Logout
-// </button>
-           
-
-export default { handleLogout };
+// Example usage:
+// <button onClick={() => handleLogout()}>Logout</button>
+// <button onClick={() => handleLogout("/custom-path")}>Logout</button>

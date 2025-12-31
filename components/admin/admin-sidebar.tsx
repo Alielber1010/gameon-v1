@@ -14,6 +14,7 @@ import { BarChart3, Flag, Users, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { handleLogout } from "@/lib/logout"
 
 const menuItems = [
   {
@@ -75,11 +76,15 @@ export function AdminSidebar() {
       <SidebarFooter className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="text-white hover:bg-red-700">
-              <Link href="/">
+            <SidebarMenuButton 
+              asChild 
+              className="text-white hover:bg-red-700"
+              onClick={() => handleLogout()}
+            >
+              <button className="w-full flex items-center gap-2">
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
-              </Link>
+              </button>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

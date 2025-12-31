@@ -2,34 +2,73 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FcGoogle } from "react-icons/fc";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"google" | "email">("google");
+  const [error, setError] = useState("");
+
+  // Check for error in URL params (from OAuth redirects)
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "OAuthAccountNotLinked") {
+      setError("An account with this email already exists. Please sign in with your email and password, or use a different Google account.");
+    } else if (errorParam === "OAuthSignin" || errorParam === "OAuthCallback" || errorParam === "OAuthCreateAccount") {
+      setError("There was a problem signing in with Google. Please try again.");
+    } else if (errorParam) {
+      setError("An error occurred during sign in. Please try again.");
+    }
+  }, [searchParams]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await signIn("google", { callbackUrl: "/dashboard" });
+    setError("");
+    // Redirect to home page, which will check role and redirect accordingly
+    await signIn("google", { callbackUrl: "/" });
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    await signIn("credentials", {
+    setError("");
+
+    const result = await signIn("credentials", {
       email,
       password,
-      callbackUrl: "/dashboard",
+      redirect: false,
     });
+
+    if (result?.error) {
+      setError("Invalid email or password. Please try again.");
+      setIsLoading(false);
+    } else if (result?.ok) {
+      // Fetch session to check role and redirect accordingly
+      try {
+        const session = await fetch("/api/auth/session").then(res => res.json());
+        if (session?.user?.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard");
+        }
+      } catch (error) {
+        // Fallback to dashboard if session check fails
+        router.push("/dashboard");
+      }
+    }
   };
 
   return (
@@ -80,7 +119,10 @@ export function LoginForm() {
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                }}
                 required
                 className="pl-10"
               />
@@ -96,7 +138,10 @@ export function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError("");
+                }}
                 required
                 className="pl-10 pr-10"
               />
@@ -110,6 +155,13 @@ export function LoginForm() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
           <Button
             type="submit"

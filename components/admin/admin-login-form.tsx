@@ -3,30 +3,53 @@
 import type React from "react"
 
 import { useState } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Shield } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Eye, EyeOff, Shield, AlertCircle } from "lucide-react"
 
 interface AdminLoginFormProps {
   onLogin: () => void
 }
 
 export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const [credentials, setCredentials] = useState({
-    username: "",
+    email: "",
     password: "",
   })
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Simple admin authentication (in real app, this would be secure backend validation)
-    if (credentials.username === "admin" && credentials.password === "admin123") {
-      onLogin()
-    } else {
-      alert("Invalid credentials")
+    setIsLoading(true)
+    setError("")
+
+    const result = await signIn("credentials", {
+      email: credentials.email,
+      password: credentials.password,
+      redirect: false,
+    })
+
+    if (result?.error) {
+      setError("Invalid email or password. Please try again.")
+      setIsLoading(false)
+    } else if (result?.ok) {
+      // Fetch session to verify admin role
+      const session = await fetch("/api/auth/session").then(res => res.json())
+      if (session?.user?.role === "admin") {
+        onLogin()
+        router.push("/admin")
+      } else {
+        setError("Access denied. Admin privileges required.")
+        setIsLoading(false)
+      }
     }
   }
 
@@ -42,13 +65,16 @@ export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
       <CardContent>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="username"
-              type="text"
-              placeholder="Enter admin username"
-              value={credentials.username}
-              onChange={(e) => setCredentials((prev) => ({ ...prev, username: e.target.value }))}
+              id="email"
+              type="email"
+              placeholder="admin@example.com"
+              value={credentials.email}
+              onChange={(e) => {
+                setCredentials((prev) => ({ ...prev, email: e.target.value }))
+                setError("")
+              }}
               required
             />
           </div>
@@ -59,9 +85,12 @@ export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter admin password"
+                placeholder="Enter your password"
                 value={credentials.password}
-                onChange={(e) => setCredentials((prev) => ({ ...prev, password: e.target.value }))}
+                onChange={(e) => {
+                  setCredentials((prev) => ({ ...prev, password: e.target.value }))
+                  setError("")
+                }}
                 className="pr-10"
                 required
               />
@@ -79,11 +108,20 @@ export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-            Access Admin Panel
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button type="submit" disabled={isLoading} className="w-full bg-red-600 hover:bg-red-700">
+            {isLoading ? "Signing in..." : "Access Admin Panel"}
           </Button>
 
-          <div className="text-center text-xs text-gray-500 mt-4">Demo credentials: admin / admin123</div>
+          <div className="text-center text-xs text-gray-500 mt-4">
+            Only users with admin role can access this panel
+          </div>
         </form>
       </CardContent>
     </Card>

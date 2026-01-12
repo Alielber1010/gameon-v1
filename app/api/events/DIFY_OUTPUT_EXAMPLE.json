@@ -1,0 +1,75 @@
+{
+  "comment": "Example JSON output that your Dify workflow should produce",
+  
+  "example_with_events": {
+    "success": true,
+    "data": [
+      {
+        "id": "event-001",
+        "title": "PETRONAS Malaysia Open 2026",
+        "description": "Major badminton tournament in Malaysia featuring top international players. Prize money of $1,450,000. Scheduled for January 6-11, 2026.",
+        "city": "Kuala Lumpur",
+        "location": "Axiata Arena, Kuala Lumpur",
+        "website": "https://corporate.bwfbadminton.com/events/calendar/",
+        "image": ""
+      },
+      {
+        "id": "event-002",
+        "title": "2026 Asia Triathlon Cup Putrajaya",
+        "description": "Continental Cup triathlon event featuring sprint and standard distance races. Part of the Asia Triathlon Cup series held in Putrajaya.",
+        "city": "Putrajaya",
+        "location": "Kompleks Sukan Air Putrajaya Presint 6, Putrajaya",
+        "website": "https://triathlon.org/events",
+        "image": ""
+      },
+      {
+        "id": "event-003",
+        "title": "Grand Prix of Malaysia 2026",
+        "description": "MotoGP World Championship race held at Sepang International Circuit. One of the premier motorcycle racing events in Asia.",
+        "city": "Sepang",
+        "location": "Sepang International Circuit, Sepang, Selangor",
+        "website": "https://motogppremier.motogp.com/calendar-of-events",
+        "image": ""
+      }
+    ],
+    "count": 3
+  },
+
+  "example_empty": {
+    "success": true,
+    "data": [],
+    "count": 0
+  },
+
+  "example_minimal_required_fields": {
+    "success": true,
+    "data": [
+      {
+        "title": "KL Marathon 2026",
+        "description": "Annual marathon event in Kuala Lumpur",
+        "city": "Kuala Lumpur",
+        "location": "Dataran Merdeka, Kuala Lumpur"
+      }
+    ],
+    "count": 1
+  },
+
+  "field_requirements": {
+    "required_root_fields": ["success", "data", "count"],
+    "required_event_fields": ["title", "description", "city", "location"],
+    "optional_event_fields": ["id", "website", "image"],
+    "notes": {
+      "success": "Must be boolean (true/false)",
+      "data": "Must be an array (can be empty [])",
+      "count": "Must be a number matching the length of data array",
+      "title": "String - Official event name",
+      "description": "String - 1-3 sentences describing the event",
+      "city": "String - Malaysian city name",
+      "location": "String - Full venue/address",
+      "website": "String - Valid URL or empty string \"\"",
+      "image": "String - Valid image URL or empty string \"\""
+    }
+  }
+}
+
+

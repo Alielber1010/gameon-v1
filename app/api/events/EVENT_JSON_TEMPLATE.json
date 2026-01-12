@@ -1,0 +1,58 @@
+{
+  "comment": "This file shows the expected JSON format for events from your Dify workflow",
+  
+  "single_event_example": {
+    "id": "event-001",
+    "title": "Standard Chartered KL Marathon 2024",
+    "description": "Join thousands of runners in Malaysia's premier marathon event. Experience the vibrant streets of Kuala Lumpur with multiple race categories available.",
+    "city": "Kuala Lumpur",
+    "location": "Dataran Merdeka, Kuala Lumpur",
+    "website": "https://www.kl-marathon.com",
+    "image": "https://example.com/images/kl-marathon.jpg"
+  },
+  
+  "full_api_response_example": {
+    "success": true,
+    "data": [
+      {
+        "id": "event-001",
+        "title": "Standard Chartered KL Marathon 2024",
+        "description": "Join thousands of runners in Malaysia's premier marathon event. Experience the vibrant streets of Kuala Lumpur with multiple race categories available.",
+        "city": "Kuala Lumpur",
+        "location": "Dataran Merdeka, Kuala Lumpur",
+        "website": "https://www.kl-marathon.com",
+        "image": "https://example.com/images/kl-marathon.jpg"
+      },
+      {
+        "id": "event-002",
+        "title": "Penang Bridge International Marathon",
+        "description": "Run across one of Malaysia's most iconic bridges. This annual event attracts runners from around the world.",
+        "city": "Penang",
+        "location": "Penang Bridge, Penang",
+        "website": "https://www.penangmarathon.gov.my",
+        "image": "https://example.com/images/penang-marathon.jpg"
+      }
+    ],
+    "count": 2
+  },
+  
+  "field_descriptions": {
+    "id": "Optional - Unique identifier for the event (string)",
+    "title": "Required - Event name/title (string)",
+    "description": "Required - Short description of the event, 1-3 sentences (string)",
+    "city": "Required - City name where event takes place (string, e.g., 'Kuala Lumpur', 'Penang')",
+    "location": "Required - Full location/venue address (string, e.g., 'Dataran Merdeka, Kuala Lumpur')",
+    "website": "Optional - URL to event's official website (string, must be valid URL)",
+    "image": "Optional - URL to event image/photo (string, must be valid image URL)"
+  },
+  
+  "minimal_example": {
+    "title": "KL Marathon 2024",
+    "description": "Annual marathon event in Kuala Lumpur",
+    "city": "Kuala Lumpur",
+    "location": "Kuala Lumpur"
+  }
+}
+
+
+

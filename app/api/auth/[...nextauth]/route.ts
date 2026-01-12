@@ -37,6 +37,11 @@ export const authOptions: NextAuthOptions = {
           const user = await User.findOne({ email: credentials.email.toLowerCase() }).select("+password")
           if (!user || !user.password) return null
 
+          // Check if user is banned - return null and let signIn callback handle the redirect
+          if (user.isBanned) {
+            return null // Return null to trigger error, signIn callback will handle ban check
+          }
+
           const match = await bcrypt.compare(credentials.password, user.password)
           if (!match) return null
 
@@ -56,6 +61,16 @@ export const authOptions: NextAuthOptions = {
   },
  callbacks: {
     async signIn({ user, account, profile }) {
+      // Check if user is banned for all providers
+      if (user?.email) {
+        await connectDB()
+        const dbUser = await User.findOne({ email: user.email.toLowerCase() })
+        if (dbUser?.isBanned) {
+          // Throw error with AccountBanned to trigger proper redirect
+          throw new Error("AccountBanned")
+        }
+      }
+      
       // Allow sign in for credentials provider
       if (account?.provider === "credentials") {
         return true
@@ -109,9 +124,19 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
+
+    async redirect({ url, baseUrl }) {
+      // If url is a relative path, make it absolute
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // If url is on the same origin, allow it
+      if (new URL(url).origin === baseUrl) return url
+      // Default to dashboard for authenticated users
+      return `${baseUrl}/dashboard`
+    },
   },
   pages: {
-    signIn: '/login', // Middleware will now redirect here instead
+    signIn: '/login',
+    error: '/login', // Redirect errors to login page
   },
 }
 

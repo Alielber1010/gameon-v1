@@ -13,6 +13,36 @@ const UserSchema = new mongoose.Schema({
   bio: String,
   phoneNumber: String,
   location: String,
+  
+  // Account status
+  isBanned: { type: Boolean, default: false },
+  bannedAt: Date,
+  bannedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  banReason: String,
+  
+  // AI Coach - Dify Chat App ID (unique per user)
+  difyChatAppId: { type: String, unique: true, sparse: true },
+  
+  // Activity & Ratings
+  gamesPlayed: { type: Number, default: 0 },
+  averageRating: { type: Number, default: 0 },
+  totalRatings: { type: Number, default: 0 },
+  
+  // Activity history (completed games)
+  activityHistory: [{
+    gameId: { type: mongoose.Schema.Types.ObjectId, ref: 'Game', required: true },
+    sport: String,
+    date: Date,
+    attended: { type: Boolean, default: true },
+    ratingGiven: { type: Boolean, default: false }, // Whether user has rated others
+    playersRated: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Track which players this user has rated in this game
+    ratingsReceived: [{
+      fromUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      rating: { type: Number, min: 1, max: 5 },
+      comment: String,
+      createdAt: { type: Date, default: Date.now },
+    }],
+  }],
 }, { timestamps: true });
 
 UserSchema.pre("save", async function(next) {

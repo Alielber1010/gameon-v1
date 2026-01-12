@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Whether the extraction was successful"
+    },
+    "data": {
+      "type": "array",
+      "description": "Array of sports events",
+      "items": {
+        "type": "object",
+        
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the event (optional but recommended)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Official event name/title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short description of the event (1-3 sentences)"
+          },
+          "city": {
+            "type": "string",
+            "description": "Malaysian city where the event takes place (e.g., 'Kuala Lumpur', 'Penang', 'Putrajaya')"
+          },
+          "location": {
+            "type": "string",
+            "description": "Full location/venue address"
+          },
+          "website": {
+            "type": "string",
+            "description": "URL to event's official website (optional)"
+          },
+          "image": {
+            "type": "string",
+            "description": "URL to event image/photo (optional)"
+          }
+        },
+        "required": ["title", "description", "city", "location"],
+        "additionalProperties": false
+      }
+    },
+    "count": {
+      "type": "number",
+      "description": "Number of events in the data array"
+    }
+  },
+  "required": ["success", "data", "count"],
+  "additionalProperties": false
+}
+
+

@@ -27,16 +27,24 @@ const GameSchema = new mongoose.Schema({
   sport: {
     type: String,
     required: true,
-    enum: ['basketball', 'football', 'tennis', 'volleyball', 'badminton', 'pingpong', 'cricket'], // add your full list
+    // Removed enum restriction to allow all sports/activities
+    // Validation happens at API level using SPORTS constant
   },
   description: { type: String, required: true },
   location: {
-    address: { type: String, required: true },
+    address: { type: String, required: true }, // Google Maps link
     city: String,
+    country: String,
     coordinates: {
       lat: Number,
       lng: Number,
     },
+    // NOTE: Removed geoJSON field since we're not using geospatial queries
+    // If you need geospatial queries in the future, add this back:
+    // geoJSON: {
+    //   type: { type: String, enum: ['Point'] },
+    //   coordinates: { type: [Number] }, // [lng, lat] format
+    // },
   },
   date: { type: Date, required: true }, // Use full Date, frontend formats to string
   startTime: { type: String, required: true }, // e.g., "18:00"
@@ -67,11 +75,30 @@ const GameSchema = new mongoose.Schema({
   },
 
   hostWhatsApp: String, // can pull from host later, or store explicitly
+
+  // Attendance tracking
+  attendance: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    attended: { type: Boolean, default: false },
+    markedAt: Date,
+    markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Host who marked attendance
+  }],
+
+  // Game completion
+  completedAt: Date,
+  completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Host who completed the game
 }, { timestamps: true });
 
 // Indexes for fast queries
 GameSchema.index({ sport: 1, date: -1, status: 1 });
-GameSchema.index({ location: '2dsphere' }); // if using geo queries later
 GameSchema.index({ hostId: 1 });
+GameSchema.index({ 'location.city': 1 }); // Index for city searches
+
+// NOTE: Removed 2dsphere index since we're not using geospatial queries
+// If you need geospatial queries in the future, uncomment and ensure geoJSON is always created:
+// GameSchema.index({ 'location.geoJSON': '2dsphere' }, { 
+//   sparse: true,
+//   name: 'location_geoJSON_2dsphere'
+// });
 
 export default mongoose.models.Game || mongoose.model('Game', GameSchema);

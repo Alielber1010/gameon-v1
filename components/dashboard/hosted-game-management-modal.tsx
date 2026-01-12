@@ -3,34 +3,279 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, Clock, X, Check, Users } from "lucide-react"
-import type { Game, JoinRequest, Player } from "@/types/game"
+import { MapPin, Calendar, Clock, X, Check, Users, ExternalLink, Loader2, Edit, Crown, CheckCircle2, Trophy } from "lucide-react"
+import type { Game, JoinRequest, Player, UserProfile } from "@/lib/db/models/types/game"
 import Image from "next/image"
+import { formatLocationForDisplay } from "@/lib/utils/location"
+import { useState, useEffect, useMemo } from "react"
+import { getGameById, leaveGame } from "@/lib/api/games"
+import { useSession } from "next-auth/react"
+import { toast } from "sonner"
+import { useDialog } from "@/lib/utils/dialog"
+import { AttendanceModal } from "@/components/dashboard/attendance-modal"
+import { PublicUserProfileModal } from "@/components/dashboard/public-user-profile-modal"
+import { InlineGameChat } from "@/components/dashboard/inline-game-chat"
 
 interface HostedGameManagementModalProps {
   game: Game
   isOpen: boolean
   onClose: () => void
-  onUserClick: (user: Player | JoinRequest) => void
   onAcceptRequest: (gameId: string, requestId: string) => void
   onRejectRequest: (gameId: string, requestId: string) => void
-  onRemovePlayer: (gameId: string, playerId: string, team: "blue" | "red") => void
+  onRemovePlayer: (gameId: string, playerId: string) => void
+  onTransferHost?: (gameId: string, newHostId: string) => void // Callback to transfer host
+  onGameUpdated?: (updatedGame: Game) => void // Callback when game data is updated
+  onEdit?: (game: Game) => void // Callback to open edit modal
+  onDeleteGame?: (gameId: string) => void // Callback to delete game
 }
 
 export function HostedGameManagementModal({
   game,
   isOpen,
   onClose,
-  onUserClick,
   onAcceptRequest,
   onRejectRequest,
   onRemovePlayer,
+  onTransferHost,
+  onDeleteGame,
+  onGameUpdated,
+  onEdit,
 }: HostedGameManagementModalProps) {
+  const { data: session } = useSession()
+  const { confirm } = useDialog()
+  const [currentGame, setCurrentGame] = useState<Game>(game)
+  const [isLoadingGame, setIsLoadingGame] = useState(false)
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false)
+  const [selectedUserProfile, setSelectedUserProfile] = useState<UserProfile | null>(null)
+  
+  // Handle player click to view profile
+  const handlePlayerClick = (player: Player | JoinRequest | any) => {
+    // Pass minimal user profile data - the modal will fetch full profile
+    const userProfile: UserProfile = {
+      id: player.userId || player.id || '',
+      name: player.name || player.userName,
+      age: player.age || player.userAge,
+      skillLevel: player.skillLevel || player.userSkillLevel || '',
+      image: player.image || player.userImage || '/placeholder.svg',
+      whatsApp: player.whatsApp || player.userWhatsApp || '',
+      bio: '',
+      gamesPlayed: 0,
+      rating: 0,
+    }
+    setSelectedUserProfile(userProfile)
+  }
+  
+  // Check if current user is the host
+  const isCurrentUserHost = session?.user?.id && currentGame.hostId === session.user.id
+  
+  // Check if current user is a registered player (including old host who transferred)
+  const isCurrentUserPlayer = useMemo(() => {
+    if (!session?.user?.id || !currentGame.registeredPlayers) return false
+    return currentGame.registeredPlayers.some(
+      (player: any) => {
+        const playerUserId = player.userId?.toString() || player.userId || player.id
+        return playerUserId === session.user.id
+      }
+    )
+  }, [currentGame.registeredPlayers, session?.user?.id])
+
+  // Check if user can chat (host or registered player)
+  const canChat = isCurrentUserHost || isCurrentUserPlayer
+
+  // Check if current user has a pending join request
+  const hasPendingJoinRequest = useMemo(() => {
+    if (!session?.user?.id || !currentGame.joinRequests) return false
+    return currentGame.joinRequests.some(
+      (request: any) => {
+        const requestUserId = request.userId?.toString() || request.userId || request.id
+        return requestUserId === session.user.id
+      }
+    )
+  }, [currentGame.joinRequests, session?.user?.id])
+
+  // Helper to check if a player has attended
+  const hasPlayerAttended = (playerId: string) => {
+    const attendance = (currentGame as any).attendance || []
+    const playerAttendance = attendance.find((att: any) => 
+      att.userId?.toString() === playerId || att.userId === playerId
+    )
+    return playerAttendance?.attended || false
+  }
+
+  // Refresh game data when modal opens to get latest join requests
+  useEffect(() => {
+    if (isOpen && game.id) {
+      fetchGameData()
+    }
+  }, [isOpen, game.id])
+
+  // Update current game when prop changes
+  useEffect(() => {
+    setCurrentGame(game)
+  }, [game])
+
+  const fetchGameData = async () => {
+    setIsLoadingGame(true)
+    try {
+      const response = await getGameById(game.id)
+      if (response.success && response.data) {
+        setCurrentGame(response.data)
+        // Notify parent component of updated game data
+        if (onGameUpdated) {
+          onGameUpdated(response.data)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching game:', error)
+    } finally {
+      setIsLoadingGame(false)
+    }
+  }
+
+  // Format date and time for display
+  const formatDate = (date: string | Date) => {
+    if (!date) return 'Date not set'
+    const d = new Date(date)
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+
+  const formatTime = (time: string) => {
+    if (!time) return 'Time not set'
+    // If time is in HH:mm format, convert to 12-hour format
+    if (time.includes(':')) {
+      const [hours, minutes] = time.split(':')
+      const hour = parseInt(hours)
+      const ampm = hour >= 12 ? 'PM' : 'AM'
+      const hour12 = hour % 12 || 12
+      return `${hour12}:${minutes} ${ampm}`
+    }
+    return time
+  }
+
+  // Check if game time has arrived (for showing attendance button)
+  const isGameTimeArrived = useMemo(() => {
+    if (!currentGame.date) return false
+    
+    // Get time string (could be in time field or startTime)
+    const timeStr = currentGame.time || (currentGame as any).startTime || ''
+    if (!timeStr) return false
+    
+    try {
+      let gameDate: Date
+      
+      // Handle "Today" string or actual date
+      if (typeof currentGame.date === 'string' && currentGame.date.toLowerCase() === 'today') {
+        gameDate = new Date() // Use today's date
+      } else {
+        // Try to parse the date string
+        gameDate = new Date(currentGame.date)
+        // If invalid, try to get from API response
+        if (isNaN(gameDate.getTime())) {
+          // Try to get original date from API response if available
+          const originalDate = (currentGame as any).originalDate || (currentGame as any).date
+          if (originalDate) {
+            gameDate = new Date(originalDate)
+          } else {
+            return false
+          }
+        }
+      }
+      
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      if (isNaN(hours) || isNaN(minutes)) return false
+      
+      // Create game start datetime
+      const gameStartDateTime = new Date(gameDate)
+      gameStartDateTime.setHours(hours, minutes, 0, 0)
+      
+      // Check if current time is past game start time
+      const now = new Date()
+      return now >= gameStartDateTime
+    } catch (error) {
+      console.error('Error checking game time:', error)
+      return false
+    }
+  }, [currentGame.date, currentGame.time, (currentGame as any).startTime])
+
+  // Check if game is ongoing or completed
+  // For now, allow hosts to mark attendance anytime (we can refine this later)
+  const canMarkAttendance = isCurrentUserHost && (
+    currentGame.status === 'ongoing' || 
+    currentGame.status === 'completed' || 
+    isGameTimeArrived ||
+    true // Temporarily always show for hosts to test
+  )
+
+  // Check if game is completed
+  const isGameCompleted = currentGame.status === 'completed'
+
+  // Debug log to help troubleshoot
+  useEffect(() => {
+    if (isOpen && isCurrentUserHost) {
+      console.log('Attendance button check:', {
+        isCurrentUserHost,
+        status: currentGame.status,
+        isGameTimeArrived,
+        canMarkAttendance,
+        date: currentGame.date,
+        time: currentGame.time,
+        startTime: (currentGame as any).startTime,
+        originalDate: (currentGame as any).originalDate,
+      })
+    }
+  }, [isOpen, isCurrentUserHost, currentGame.status, isGameTimeArrived, canMarkAttendance, currentGame.date, currentGame.time])
+
+  const handleLeaveGame = async () => {
+    const confirmed = await confirm('Are you sure you want to leave this game?', {
+      title: 'Leave Game',
+      message: 'Are you sure you want to leave this game?',
+      variant: 'destructive',
+      confirmText: 'Leave',
+      cancelText: 'Cancel',
+    })
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const response = await leaveGame(currentGame.id)
+      if (response.success) {
+        toast.success('Successfully left the game')
+        onClose()
+        // Notify parent to refresh
+        if (onGameUpdated) {
+          // Game might be deleted if host left with no players
+          onGameUpdated(null as any)
+        }
+      } else {
+        toast.error(response.error || 'Failed to leave game')
+      }
+    } catch (error: any) {
+      console.error('Error leaving game:', error)
+      toast.error('Failed to leave game. Please try again.')
+    }
+  }
+
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{game.sport.toUpperCase()}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl font-bold">{currentGame.sport.toUpperCase()}</DialogTitle>
+            <div className="flex items-center gap-2">
+              {hasPendingJoinRequest && (
+                <Badge className="bg-orange-500 text-white">
+                  Pending Request
+                </Badge>
+              )}
+              {isCurrentUserHost && currentGame.joinRequests && currentGame.joinRequests.length > 0 && (
+                <Badge className="bg-orange-500 text-white">
+                  {currentGame.joinRequests.length} pending request{currentGame.joinRequests.length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -48,171 +293,436 @@ export function HostedGameManagementModal({
           {/* Game Details */}
           <div className="space-y-4">
             <p className="text-gray-600">
-              Game Description: {game.description || "a friendly match in football we just wanna have a good time"}
+              {currentGame.description || "No description provided"}
             </p>
 
             <div className="flex flex-wrap gap-6 text-sm">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="flex items-center gap-1">
                   <span>🎯</span>
-                  Skill level: {game.skillLevel}+
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <span>👥</span>
-                  Age Range: 18-40
+                  Skill level: {currentGame.skillLevel || 'all'}
                 </Badge>
               </div>
 
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                <span>Date: Fri, May 16</span>
+                <span>Date: {formatDate(currentGame.date)}</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                <span>Time: 6:00 PM - 7:30 PM</span>
+                <span>Time: {formatTime(currentGame.time)} {currentGame.endTime && `- ${formatTime(currentGame.endTime)}`}</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              <span>{game.location}</span>
-            </div>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Teams Section */}
-            <div className="lg:col-span-2 grid md:grid-cols-2 gap-6">
-              {/* Team Blue */}
-              <div className="bg-blue-100 p-6 rounded-lg">
-                <h4 className="font-bold text-blue-800 mb-4 text-lg">TEAM BLUE</h4>
-                <div className="space-y-3">
-                  {game.teamBlue?.map((player) => (
-                    <div key={player.id} className="flex items-center justify-between">
-                      <div
-                        className="flex items-center gap-3 cursor-pointer hover:bg-blue-200 p-2 rounded"
-                        onClick={() => onUserClick(player)}
-                      >
-                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">{player.name.charAt(0)}</span>
-                        </div>
-                        <span className="font-medium">{player.name}</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 text-red-600 hover:bg-red-100"
-                        onClick={() => onRemovePlayer(game.id, player.id, "blue")}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Team Red */}
-              <div className="bg-red-100 p-6 rounded-lg">
-                <h4 className="font-bold text-red-800 mb-4 text-lg">TEAM RED</h4>
-                <div className="space-y-3">
-                  {game.teamRed?.map((player) => (
-                    <div key={player.id} className="flex items-center justify-between">
-                      <div
-                        className="flex items-center gap-3 cursor-pointer hover:bg-red-200 p-2 rounded"
-                        onClick={() => onUserClick(player)}
-                      >
-                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">{player.name.charAt(0)}</span>
-                        </div>
-                        <span className="font-medium">{player.name}</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 text-red-600 hover:bg-red-100"
-                        onClick={() => onRemovePlayer(game.id, player.id, "red")}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Join Requests Section */}
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-bold text-lg">JOIN REQUEST</h4>
-                <div className="flex items-center gap-2 text-red-600">
-                  <Users className="h-4 w-4" />
-                  <span className="text-sm font-medium">{game.seatsLeft} seats left</span>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {game.joinRequests?.map((request) => (
-                  <div key={request.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
-                    <div
-                      className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
-                      onClick={() => onUserClick(request)}
+              {(() => {
+                const locationDisplay = formatLocationForDisplay(currentGame.location)
+                if (locationDisplay.isLink && locationDisplay.url) {
+                  return (
+                    <a
+                      href={locationDisplay.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1"
                     >
-                      <Image
-                        src={request.userImage || "/placeholder.svg"}
-                        alt={request.userName}
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div>
-                        <div className="font-medium">{request.userName}</div>
-                        <div className="text-sm text-gray-600">
-                          {request.userAge}, {request.userSkillLevel}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700"
-                        onClick={() => onAcceptRequest(game.id, request.id)}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="h-8 w-8 p-0"
-                        onClick={() => onRejectRequest(game.id, request.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                {(!game.joinRequests || game.joinRequests.length === 0) && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No pending requests</p>
-                  </div>
-                )}
-              </div>
+                      {locationDisplay.text}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )
+                }
+                return <span>{locationDisplay.text}</span>
+              })()}
             </div>
           </div>
+
+          <div className={`grid gap-6 ${isCurrentUserHost ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
+            {/* Players Section */}
+            <div className={isCurrentUserHost ? 'lg:col-span-2' : ''}>
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-lg">Players</h4>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Users className="h-4 w-4" />
+                    <span className="text-sm">
+                      {((currentGame.registeredPlayers?.length || 0) + 1)} / {currentGame.maxPlayers || ((currentGame.seatsLeft || 0) + (currentGame.registeredPlayers?.length || 0) + 1)} players
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {isLoadingGame ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+                    </div>
+                  ) : (
+                    <>
+                      {/* Host at the top */}
+                      {currentGame.hostName && (
+                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2 border-yellow-200">
+                          <div
+                            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                            onClick={() => {
+                              // Create a host player object for the click handler
+                              const hostPlayer: any = {
+                                id: currentGame.hostId,
+                                userId: currentGame.hostId,
+                                name: currentGame.hostName,
+                                image: currentGame.hostImage,
+                                whatsApp: currentGame.hostWhatsApp,
+                                isHost: true,
+                              }
+                              handlePlayerClick(hostPlayer)
+                            }}
+                          >
+                            {currentGame.hostImage ? (
+                              <Image
+                                src={currentGame.hostImage}
+                                alt={currentGame.hostName}
+                                width={40}
+                                height={40}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">{currentGame.hostName?.charAt(0)}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <div>
+                                <div className="font-medium flex items-center gap-2 flex-wrap">
+                                  {currentGame.hostName}
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 text-xs flex items-center gap-1">
+                                    <Crown className="h-3 w-3" />
+                                    Host
+                                  </Badge>
+                                  {currentGame.hostId && hasPlayerAttended(currentGame.hostId) && (
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs flex items-center gap-1">
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      Attended
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {/* Regular players */}
+                      {currentGame.registeredPlayers && currentGame.registeredPlayers.length > 0 && (
+                        // Deduplicate players by userId to prevent showing same user twice
+                        Array.from(
+                          new Map(
+                            currentGame.registeredPlayers.map((player: any) => {
+                              const userId = player.userId?.toString() || player.userId || player.id
+                              return [userId, player]
+                            })
+                          ).values()
+                        ).map((player: any) => (
+                          <div key={player.id || player.userId} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                        <div
+                          className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                          onClick={() => handlePlayerClick(player)}
+                        >
+                          {player.image ? (
+                            <Image
+                              src={player.image}
+                              alt={player.name}
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">{player.name.charAt(0)}</span>
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-medium flex items-center gap-2 flex-wrap">
+                              {player.name}
+                              {hasPlayerAttended(player.userId || player.id) && (
+                                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  Attended
+                                </Badge>
+                              )}
+                            </div>
+                            {(player.age || player.skillLevel) && (
+                              <div className="text-sm text-gray-600">
+                                {player.age && `${player.age} years`}
+                                {player.age && player.skillLevel && ' • '}
+                                {player.skillLevel && player.skillLevel}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Only show action buttons if user is host */}
+                        {isCurrentUserHost && (
+                          <div className="flex items-center gap-1">
+                            {onTransferHost && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 p-0 text-yellow-600 hover:bg-yellow-100"
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                const confirmed = await confirm(`Transfer host ownership to ${player.name}? You will become a regular player and can then leave the game.`, {
+                                  title: 'Transfer Host Ownership',
+                                  message: `Transfer host ownership to ${player.name}? You will become a regular player and can then leave the game.`,
+                                  confirmText: 'Transfer',
+                                  cancelText: 'Cancel',
+                                })
+                                if (confirmed) {
+                                  // Use userId if available, otherwise use id (which should be userId)
+                                  const playerUserId = player.userId || player.id
+                                  if (playerUserId) {
+                                    onTransferHost(currentGame.id, playerUserId)
+                                  } else {
+                                    toast.error('Unable to identify player. Please refresh and try again.')
+                                  }
+                                }
+                              }}
+                                title="Transfer host ownership"
+                              >
+                                <Crown className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                // Use userId if available, otherwise use id (which should be userId)
+                                const playerUserId = player.userId || player.id
+                                if (playerUserId) {
+                                  onRemovePlayer(currentGame.id, playerUserId)
+                                } else {
+                                  toast.error('Unable to identify player. Please refresh and try again.')
+                                }
+                              }}
+                              title="Remove player"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                        </div>
+                      ))
+                      )}
+                      {(!currentGame.registeredPlayers || currentGame.registeredPlayers.length === 0) && (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                          <p>No other players joined yet</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Join Requests Section - Only visible to host */}
+            {isCurrentUserHost && (
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-lg">JOIN REQUESTS</h4>
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Users className="h-4 w-4" />
+                    <span className="text-sm font-medium">{currentGame.seatsLeft || 0} seats left</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {isLoadingGame ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+                    </div>
+                  ) : currentGame.joinRequests && currentGame.joinRequests.length > 0 ? (
+                    currentGame.joinRequests.map((request: any) => (
+                      <div key={request.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors">
+                        <div
+                          className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                          onClick={() => handlePlayerClick(request)}
+                        >
+                          {request.userImage ? (
+                            <Image
+                              src={request.userImage}
+                              alt={request.userName || request.name}
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">{(request.userName || request.name || 'U').charAt(0).toUpperCase()}</span>
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-medium">{request.userName || request.name || 'Unknown User'}</div>
+                            <div className="text-sm text-gray-600">
+                              {request.userAge && `${request.userAge} years`}
+                              {request.userAge && request.userSkillLevel && ' • '}
+                              {request.userSkillLevel && request.userSkillLevel}
+                              {!request.userAge && !request.userSkillLevel && 'No additional info'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700"
+                            onClick={async () => {
+                              await onAcceptRequest(currentGame.id, request.id)
+                              // Refresh game data after accepting
+                              setTimeout(() => fetchGameData(), 500)
+                            }}
+                            title="Accept request"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-8 w-8 p-0"
+                            onClick={async () => {
+                              await onRejectRequest(currentGame.id, request.id)
+                              // Refresh game data after rejecting
+                              setTimeout(() => fetchGameData(), 500)
+                            }}
+                            title="Reject request"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>No pending requests</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Game Chat - Inline inside modal (only visible to hosts and registered players, not pending requests) */}
+          {!hasPendingJoinRequest && canChat && (
+            <InlineGameChat 
+              gameId={currentGame.id} 
+              isPlayer={canChat}
+              hasPendingRequest={false}
+            />
+          )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="destructive" className="bg-red-600 hover:bg-red-700">
-              Leave
-            </Button>
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="flex gap-3">
+              {/* Game Completed button - shown when game is completed */}
+              {isGameCompleted && isCurrentUserHost && (
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  disabled
+                >
+                  <Trophy className="h-4 w-4" />
+                  Game Completed
+                </Button>
+              )}
+              {/* Mark Attendance button - only visible to host when game is not completed */}
+              {canMarkAttendance && !isGameCompleted && (
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  onClick={() => setShowAttendanceModal(true)}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Mark Attendance
+                </Button>
+              )}
+              {/* Edit button - only visible to host */}
+              {isCurrentUserHost && onEdit && !isGameCompleted && (
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    onEdit(currentGame)
+                    onClose()
+                  }}
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Game
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {/* Show Leave button for players (including old host who transferred) */}
+              {(isCurrentUserPlayer || isCurrentUserHost) && (
+                <Button 
+                  variant="destructive" 
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={!!(isCurrentUserHost && (currentGame.registeredPlayers?.length || 0) > 0)}
+                  onClick={handleLeaveGame}
+                  title={isCurrentUserHost && (currentGame.registeredPlayers?.length || 0) > 0 
+                    ? "Transfer host ownership to a player first before leaving" 
+                    : "Leave game"}
+                >
+                  Leave
+                </Button>
+              )}
+              {/* Show Delete button only for current host */}
+              {isCurrentUserHost && onDeleteGame && (
+                <Button 
+                  variant="destructive" 
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={async () => {
+                    const confirmed = await confirm('Are you sure you want to delete this game?', {
+                      title: 'Delete Game',
+                      message: 'Are you sure you want to delete this game? This action cannot be undone.',
+                      variant: 'destructive',
+                      confirmText: 'Delete',
+                      cancelText: 'Cancel',
+                    })
+                    if (confirmed) {
+                      onDeleteGame(currentGame.id)
+                      onClose()
+                    }
+                  }}
+                  title="Delete game"
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>
+
+      {/* Attendance Modal */}
+      {showAttendanceModal && (
+        <AttendanceModal
+          game={currentGame}
+          isOpen={showAttendanceModal}
+          onClose={() => setShowAttendanceModal(false)}
+          onAttendanceMarked={(updatedGame) => {
+            setCurrentGame(updatedGame)
+            if (onGameUpdated) {
+              onGameUpdated(updatedGame)
+            }
+            setShowAttendanceModal(false)
+          }}
+        />
+      )}
     </Dialog>
+
+    {/* Public User Profile Modal */}
+    {selectedUserProfile && (
+      <PublicUserProfileModal
+        user={selectedUserProfile}
+        isOpen={!!selectedUserProfile}
+        onClose={() => setSelectedUserProfile(null)}
+      />
+    )}
+    </>
   )
 }

@@ -10,11 +10,15 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
-import { Home, Calendar, Trophy, Bot, Bell, User, LogOut } from "lucide-react"
+import { Home, Calendar, Trophy, Bot, Bell, User, LogOut, History, Activity } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { handleLogout } from "@/lib/logout"
+import  handleLogout  from "@/lib/logout"
+import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
+import { getNotifications } from "@/lib/api/notifications"
 
 const menuItems = [
   {
@@ -24,13 +28,18 @@ const menuItems = [
   },
   {
     title: "Upcoming Games",
-    url: "/dashboard/upcoming",
+    url: "/dashboard/hosted",
     icon: Calendar,
   },
   {
-    title: "Hosted Games",
-    url: "/dashboard/hosted",
-    icon: Trophy,
+    title: "Previously Played",
+    url: "/dashboard/completed",
+    icon: History,
+  },
+  {
+    title: "Sports Events",
+    url: "/dashboard/events",
+    icon: Activity,
   },
   {
     title: "AI Coach",
@@ -51,6 +60,39 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { data: session, status } = useSession()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      // Fetch unread notification count
+      const fetchUnreadCount = async () => {
+        try {
+          const response = await getNotifications({ read: false, limit: 1 })
+          if (response.success && response.pagination) {
+            setUnreadCount(response.pagination.unread)
+          }
+        } catch (error) {
+          console.error('Error fetching notification count:', error)
+        }
+      }
+
+      fetchUnreadCount()
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000)
+      
+      // Listen for custom event to refresh count when notifications are marked as read
+      const handleNotificationRead = () => {
+        fetchUnreadCount()
+      }
+      window.addEventListener('notification-read', handleNotificationRead)
+      
+      return () => {
+        clearInterval(interval)
+        window.removeEventListener('notification-read', handleNotificationRead)
+      }
+    }
+  }, [status])
 
   return (
     <Sidebar className="bg-green-600 text-white">
@@ -70,9 +112,14 @@ export function AppSidebar() {
                   pathname === item.url && "bg-green-700",
                 )}
               >
-                <Link href={item.url}>
+                <Link href={item.url} className="relative">
                   <item.icon className="h-4 w-4" />
                   <span>{item.title}</span>
+                  {item.title === "Notifications" && unreadCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -86,9 +133,19 @@ export function AppSidebar() {
             <SidebarMenuButton 
               asChild 
               className="text-white hover:bg-green-700"
-              onClick={() => handleLogout()}
+              onClick={() => {
+                console.log('[AppSidebar] Logout button clicked on SidebarMenuButton');
+                handleLogout();
+              }}
             >
-              <button className="w-full flex items-center gap-2">
+              <button 
+                className="w-full flex items-center gap-2"
+                onClick={(e) => {
+                  console.log('[AppSidebar] Logout button clicked on inner button', e);
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
               </button>

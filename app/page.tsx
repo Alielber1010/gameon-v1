@@ -1,20 +1,26 @@
-// app/page.tsx
-import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+"use client"
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions);
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { Loader2 } from "lucide-react"
 
-  if (session) {
-    // Redirect admins to admin dashboard, regular users to dashboard
-    if (session.user?.role === 'admin') {
-      redirect('/admin');
-    } else {
-      redirect('/dashboard');
-    }
-  } else {
-    redirect('/login')
-  }
+export default function HomePage() {
+  const router = useRouter()
+  const { status } = useSession()
 
+  useEffect(() => {
+    // Redirect to dashboard immediately
+    router.push('/dashboard')
+  }, [router])
+
+  // Show loading state while redirecting
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+        <p className="text-gray-600">Redirecting to dashboard...</p>
+      </div>
+    </div>
+  )
 }

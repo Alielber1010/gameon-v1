@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FcGoogle } from "react-icons/fc";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function LoginForm() {
   const router = useRouter();
@@ -21,14 +22,59 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"google" | "email">("google");
   const [error, setError] = useState("");
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [banReason, setBanReason] = useState("");
 
-  // Check for error in URL params (from OAuth redirects)
+  // Check for error in URL params (from OAuth redirects and ban redirects)
   useEffect(() => {
     const errorParam = searchParams.get("error");
+    const emailParam = searchParams.get("email");
+    
     if (errorParam === "OAuthAccountNotLinked") {
       setError("An account with this email already exists. Please sign in with your email and password, or use a different Google account.");
     } else if (errorParam === "OAuthSignin" || errorParam === "OAuthCallback" || errorParam === "OAuthCreateAccount") {
       setError("There was a problem signing in with Google. Please try again.");
+    } else if (errorParam === "AccountBanned" || errorParam === "AccessDenied") {
+      // For AccessDenied, it might be a ban - check if we have email
+      // For AccountBanned, definitely show ban modal
+      const shouldCheckBan = errorParam === "AccountBanned" || emailParam;
+      
+      if (shouldCheckBan && emailParam) {
+        // Fetch ban reason if we have email
+        fetch(`/api/users/ban-info?email=${encodeURIComponent(emailParam)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.banReason) {
+              setBanReason(data.banReason);
+            } else {
+              setBanReason("Your account has been permanently banned for violating the GameOn policies.");
+            }
+            setShowBanModal(true);
+          })
+          .catch(() => {
+            setBanReason("Your account has been permanently banned for violating the GameOn policies.");
+            setShowBanModal(true);
+          });
+      } else {
+        // No email provided, show generic message
+        setBanReason("Your account has been permanently banned for violating the GameOn policies.");
+        setShowBanModal(true);
+      }
+    } else if (errorParam === "AccessDenied") {
+      // Check if it might be a ban issue
+      if (emailParam) {
+        fetch(`/api/users/ban-info?email=${encodeURIComponent(emailParam)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.banReason) {
+              setBanReason(data.banReason);
+              setShowBanModal(true);
+            }
+          })
+          .catch(() => {
+            // Not a ban issue, ignore
+          });
+      }
     } else if (errorParam) {
       setError("An error occurred during sign in. Please try again.");
     }
@@ -37,8 +83,8 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError("");
-    // Redirect to home page, which will check role and redirect accordingly
-    await signIn("google", { callbackUrl: "/" });
+    // Redirect to dashboard - middleware will redirect admins to /admin automatically
+    await signIn("google", { callbackUrl: "/dashboard" });
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
@@ -53,6 +99,26 @@ export function LoginForm() {
     });
 
     if (result?.error) {
+      // Always check if user is banned when there's an error
+      // This handles both AccountBanned and CredentialsSignin errors
+      if (email) {
+        try {
+          const banResponse = await fetch(`/api/users/ban-info?email=${encodeURIComponent(email)}`);
+          const banData = await banResponse.json();
+          if (banData.success && banData.banReason) {
+            // User is banned, show ban modal
+            setBanReason(banData.banReason);
+            setShowBanModal(true);
+            setError("");
+            setIsLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('Error checking ban status:', err);
+        }
+      }
+      
+      // Not banned or couldn't check, show invalid credentials error
       setError("Invalid email or password. Please try again.");
       setIsLoading(false);
     } else if (result?.ok) {
@@ -72,6 +138,7 @@ export function LoginForm() {
   };
 
   return (
+    <>
     <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur">
       <CardHeader className="text-center space-y-3">
         <CardTitle className="text-3xl font-bold text-gray-900">Welcome to GameOn</CardTitle>
@@ -184,5 +251,63 @@ export function LoginForm() {
         </p>
       </CardContent>
     </Card>
+
+    {/* Ban Notice Modal */}
+    <Dialog open={showBanModal} onOpenChange={setShowBanModal}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <AlertCircle className="h-6 w-6" />
+            Account Banned
+          </DialogTitle>
+          <DialogDescription className="text-base">
+            Your account has been permanently suspended.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-red-800">Account Suspended</h3>
+                  <p className="text-sm text-red-700 whitespace-pre-line">
+                    {banReason || "Your account has been permanently banned for violating the GameOn policies."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-900">Need Help?</h4>
+              <p className="text-sm text-gray-700">
+                If you believe this ban was issued in error or have questions about your account status, 
+                please contact our support team:
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <Mail className="h-4 w-4 text-gray-600" />
+                <a 
+                  href="mailto:gamon9966@gmail.com" 
+                  className="text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  gamon9966@gmail.com
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-center pt-2">
+            <Button 
+              onClick={() => setShowBanModal(false)}
+              className="w-full"
+            >
+              I Understand
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

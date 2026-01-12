@@ -8,6 +8,16 @@ const nextConfig = {
   },
   images: {
     domains: ['placeholder.svg'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
     unoptimized: true,
   },
 }

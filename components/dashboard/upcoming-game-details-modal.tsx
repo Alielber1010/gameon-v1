@@ -3,11 +3,14 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, Clock, MessageCircle, Phone } from "lucide-react"
+import { MapPin, Calendar, Clock, MessageCircle, ExternalLink, Users } from "lucide-react"
 import { PublicUserProfileModal } from "./public-user-profile-modal"
+import { InlineGameChat } from "./inline-game-chat"
 import { useState } from "react"
-import type { Game, UserProfile } from "@/types/game"
+import type { Game, UserProfile } from "@/lib/db/models/types/game"
 import Image from "next/image"
+import { formatLocationForDisplay } from "@/lib/utils/location"
+import { useSession } from "next-auth/react"
 
 interface UpcomingGameDetailsModalProps {
   game: Game
@@ -103,30 +106,55 @@ const getUserProfile = (playerName: string): UserProfile => {
 }
 
 export function UpcomingGameDetailsModal({ game, isOpen, onClose, onLeaveGame }: UpcomingGameDetailsModalProps) {
+  const { data: session } = useSession()
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
 
-  const handleChatHost = () => {
-    window.open(game.hostWhatsApp, "_blank")
-  }
 
-  const handlePlayerClick = (playerName: string) => {
-    const userProfile = getUserProfile(playerName)
+  const handlePlayerClick = (player: any) => {
+    // Pass minimal user profile data - the modal will fetch full profile
+    const userProfile: UserProfile = {
+      id: player.id || player.userId || '',
+      name: player.name,
+      age: player.age,
+      skillLevel: player.skillLevel || '',
+      image: player.image || '/placeholder.svg?height=96&width=96',
+      whatsApp: player.whatsApp || '',
+      bio: '',
+      gamesPlayed: 0,
+      rating: 0,
+    }
     setSelectedUser(userProfile)
   }
 
-  // Mock team data
-  const teamData = {
-    teamBlue: [
-      { id: "1", name: "KHALED", isCurrentUser: false },
-      { id: "2", name: "MOHAMED", isCurrentUser: false },
-      { id: "3", name: "YOUSSEF", isCurrentUser: false },
-    ],
-    teamRed: [
-      { id: "4", name: "NOUR", isCurrentUser: false },
-      { id: "5", name: "AHMED", isCurrentUser: false },
-      { id: "6", name: "ALI (YOU)", isCurrentUser: true },
-    ],
-  }
+  // Get all players from registeredPlayers and deduplicate by userId
+  const allPlayers = Array.from(
+    new Map(
+      (game.registeredPlayers || []).map((player: any) => {
+        const userId = player.userId?.toString() || player.userId || player.id
+        return [userId, {
+          id: userId,
+          name: player.name,
+          age: player.age,
+          skillLevel: player.skillLevel,
+          image: player.image,
+          whatsApp: player.whatsApp,
+          isCurrentUser: userId === session?.user?.id,
+        }]
+      })
+    ).values()
+  )
+
+  // Check if current user is a player or host
+  const isCurrentUserPlayer = session?.user?.id && (
+    game.hostId === session.user.id ||
+    allPlayers.some((p) => p.id === session.user.id || p.isCurrentUser)
+  )
+
+  // Check if current user has a pending join request
+  const hasPendingJoinRequest = session?.user?.id && game.joinRequests?.some((request: any) => {
+    const requestUserId = request.userId?.toString() || request.userId || request.id
+    return requestUserId === session.user.id
+  })
 
   return (
     <>
@@ -184,69 +212,94 @@ export function UpcomingGameDetailsModal({ game, isOpen, onClose, onLeaveGame }:
               {/* Location */}
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                <span>HappyGym, {game.location}</span>
+                {(() => {
+                  const locationDisplay = formatLocationForDisplay(game.location)
+                  if (locationDisplay.isLink && locationDisplay.url) {
+                    return (
+                      <a
+                        href={locationDisplay.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1"
+                      >
+                        {locationDisplay.text}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )
+                  }
+                  return <span>{locationDisplay.text}</span>
+                })()}
               </div>
             </div>
 
-            {/* Teams Section */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Team Blue */}
-              <div className="bg-blue-100 p-6 rounded-lg">
-                <h4 className="font-bold text-blue-800 mb-4 text-lg">TEAM BLUE</h4>
-                <div className="space-y-3">
-                  {teamData.teamBlue.map((player) => (
-                    <div
-                      key={player.id}
-                      className="flex items-center gap-3 cursor-pointer hover:bg-blue-200 p-2 rounded transition-colors"
-                      onClick={() => handlePlayerClick(player.name)}
-                    >
-                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">{player.name.charAt(0)}</span>
-                      </div>
-                      <span className="font-medium hover:text-blue-700">{player.name}</span>
-                    </div>
-                  ))}
+            {/* Players Section */}
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-bold text-lg">Players</h4>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Users className="h-4 w-4" />
+                  <span className="text-sm">
+                    {allPlayers.length} / {game.seatsLeft + allPlayers.length} players
+                  </span>
                 </div>
               </div>
-
-              {/* Team Red */}
-              <div className="bg-red-100 p-6 rounded-lg">
-                <h4 className="font-bold text-red-800 mb-4 text-lg">TEAM RED</h4>
-                <div className="space-y-3">
-                  {teamData.teamRed.map((player) => (
+              <div className="space-y-3">
+                {allPlayers.length > 0 ? (
+                  allPlayers.map((player) => (
                     <div
                       key={player.id}
-                      className="flex items-center gap-3 cursor-pointer hover:bg-red-200 p-2 rounded transition-colors"
-                      onClick={() => handlePlayerClick(player.name)}
+                      className="flex items-center gap-3 cursor-pointer hover:bg-gray-100 p-2 rounded transition-colors"
+                      onClick={() => handlePlayerClick(player)}
                     >
-                      <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                        {player.isCurrentUser ? (
-                          <MessageCircle className="h-4 w-4 text-white" />
-                        ) : (
-                          <span className="text-white text-xs font-bold">{player.name.charAt(0)}</span>
+                      {player.image ? (
+                        <Image
+                          src={player.image}
+                          alt={player.name}
+                          width={32}
+                          height={32}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                          {player.isCurrentUser ? (
+                            <MessageCircle className="h-4 w-4 text-white" />
+                          ) : (
+                            <span className="text-white text-xs font-bold">{player.name.charAt(0)}</span>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <span className={`font-medium hover:text-green-700 ${player.isCurrentUser ? "text-green-600" : ""}`}>
+                          {player.name}
+                          {player.isCurrentUser && ' (You)'}
+                        </span>
+                        {(player.age || player.skillLevel) && (
+                          <div className="text-xs text-gray-500">
+                            {player.age && `${player.age} years`}
+                            {player.age && player.skillLevel && ' • '}
+                            {player.skillLevel && player.skillLevel}
+                          </div>
                         )}
                       </div>
-                      <span
-                        className={`font-medium hover:text-red-700 ${player.isCurrentUser ? "text-green-600" : ""}`}
-                      >
-                        {player.name}
-                      </span>
                     </div>
-                  ))}
-                </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">No players joined yet</p>
+                )}
               </div>
             </div>
+
+            {/* Game Chat - Inline inside modal (only visible to hosts and registered players, not pending requests) */}
+            {!hasPendingJoinRequest && isCurrentUserPlayer && (
+              <InlineGameChat 
+                gameId={game.id} 
+                isPlayer={isCurrentUserPlayer}
+                hasPendingRequest={false}
+              />
+            )}
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={handleChatHost}
-                className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
-              >
-                <Phone className="h-4 w-4" />
-                Chat Host
-              </Button>
               <Button variant="destructive" onClick={onLeaveGame} className="bg-red-600 hover:bg-red-700">
                 Leave Game
               </Button>

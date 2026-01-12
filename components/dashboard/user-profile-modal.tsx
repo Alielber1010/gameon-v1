@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { MessageCircle, Star, Trophy } from "lucide-react"
-import type { UserProfile } from "@/types/game"
+import type { UserProfile } from "@/lib/db/models/types/game"
 import Image from "next/image"
 
 interface UserProfileModalProps {

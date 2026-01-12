@@ -10,11 +10,11 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
-import { BarChart3, Flag, Users, Settings, LogOut } from "lucide-react"
+import { BarChart3, Flag, Users, Settings, LogOut, Gamepad2 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { handleLogout } from "@/lib/logout"
+import  handleLogout  from "@/lib/logout"
 
 const menuItems = [
   {
@@ -26,6 +26,11 @@ const menuItems = [
     title: "Reports",
     url: "/admin/reports",
     icon: Flag,
+  },
+  {
+    title: "Games",
+    url: "/admin/games",
+    icon: Gamepad2,
   },
   {
     title: "Users",
@@ -79,9 +84,19 @@ export function AdminSidebar() {
             <SidebarMenuButton 
               asChild 
               className="text-white hover:bg-red-700"
-              onClick={() => handleLogout()}
+              onClick={() => {
+                console.log('[AdminSidebar] Logout button clicked on SidebarMenuButton');
+                handleLogout();
+              }}
             >
-              <button className="w-full flex items-center gap-2">
+              <button 
+                className="w-full flex items-center gap-2"
+                onClick={(e) => {
+                  console.log('[AdminSidebar] Logout button clicked on inner button', e);
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
                 <LogOut className="h-4 w-4" />
                 <span>Logout</span>
               </button>

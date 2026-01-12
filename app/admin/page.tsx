@@ -3,7 +3,6 @@
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { AdminSidebarProvider } from "@/components/admin/admin-sidebar-provider"
 
 export default function AdminPage() {
   const { data: session, status } = useSession()
@@ -19,6 +18,12 @@ export default function AdminPage() {
     // If authenticated but not admin, redirect to dashboard
     if (status === "authenticated" && session?.user?.role !== "admin") {
       router.push("/dashboard")
+      return
+    }
+
+    // If authenticated and is admin, redirect to admin dashboard
+    if (status === "authenticated" && session?.user?.role === "admin") {
+      router.push("/admin/dashboard")
     }
   }, [session, status, router])
 
@@ -34,11 +39,6 @@ export default function AdminPage() {
     )
   }
 
-  // If not authenticated or not admin, don't render (redirect is happening)
-  if (status === "unauthenticated" || session?.user?.role !== "admin") {
-    return null
-  }
-
-  // User is authenticated and is admin
-  return <AdminSidebarProvider />
+  // Don't render anything, redirect is happening
+  return null
 }

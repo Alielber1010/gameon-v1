@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongodb';
 import User from '@/lib/db/models/User';
 
+// Force dynamic rendering since we use request.url
+export const dynamic = 'force-dynamic';
+
 // GET /api/users/ban-info - Get ban information for a user (public endpoint for login page)
 export async function GET(request: NextRequest) {
   try {

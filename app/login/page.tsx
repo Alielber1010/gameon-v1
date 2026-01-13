@@ -1,4 +1,5 @@
 // C:\gameon-v1\app\login
+import { Suspense } from "react"
 import { LoginForm } from "@/components/auth/login-form"
 import { StatsCards } from "@/components/auth/stats-cards"
 import { Logo } from "@/components/ui/logo"
@@ -38,7 +39,9 @@ export default function LoginPage() {
 
         {/* Right Side - Login Form */}
         <div className="flex justify-center lg:justify-end">
-          <LoginForm />
+          <Suspense fallback={<div className="w-full max-w-md h-96 bg-white rounded-lg animate-pulse" />}>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </div>

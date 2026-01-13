@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,7 +17,7 @@ import { Gamepad2, Search, Loader2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-export default function AdminGamesPage() {
+function AdminGamesContent() {
   const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -246,5 +246,20 @@ export default function AdminGamesPage() {
         }}
       />
     </div>
+  )
+}
+
+export default function AdminGamesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-red-600" />
+          <p className="mt-4 text-gray-600">Loading games...</p>
+        </div>
+      </div>
+    }>
+      <AdminGamesContent />
+    </Suspense>
   )
 }

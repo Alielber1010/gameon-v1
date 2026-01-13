@@ -34,7 +34,7 @@ This guide covers deploying the GameOn application to Vercel with a separate Soc
 - MongoDB database (MongoDB Atlas recommended)
 - GitHub repository connected to both services
 
-## Step 1: Deploy Socket Server to Render
+## Step 1: Deploy Socket Server to Render   DONE 
 
 ### 1.1 Create Web Service on Render
 
@@ -59,7 +59,7 @@ PORT=10000
 MONGODB_URI=your-mongodb-connection-string
 CORS_ORIGIN=https://your-vercel-app.vercel.app
 ```
-
+ws2
 **Important:**
 - Render automatically provides a PORT, but you can set it explicitly
 - `CORS_ORIGIN` should be your Vercel deployment URL (you'll update this after Vercel deployment)
@@ -93,27 +93,42 @@ Vercel should auto-detect:
 
 ### 2.3 Set Environment Variables on Vercel
 
-In Vercel project settings → Environment Variables, add:
+**Option 1: Add all variables at once (recommended)**
 
-```
-# Socket Server URL (from Render)
-NEXT_PUBLIC_SOCKET_URL=https://your-socket-server.onrender.com
+You can copy all your environment variables from `.env.local` to Vercel. However, note:
 
-# MongoDB (same as Render)
-MONGODB_URI=your-mongodb-connection-string
+1. **Before first deployment**: Add all variables EXCEPT `NEXTAUTH_URL` (you'll set this after deployment)
+2. **After first deployment**: Once Vercel gives you the app URL, update `NEXTAUTH_URL` to match it
 
-# NextAuth Configuration
-NEXTAUTH_URL=https://your-vercel-app.vercel.app
-NEXTAUTH_SECRET=your-nextauth-secret-key
+**Step-by-step:**
 
-# Other environment variables your app needs
-# (check your .env.local or existing config)
-```
+1. In Vercel project settings → Environment Variables
+2. Add all variables from your `.env.local` file, including:
+   ```
+   NEXT_PUBLIC_SOCKET_URL=https://gameon-socket-server.onrender.com
+   MONGODB_URI=your-mongodb-connection-string
+   NEXTAUTH_SECRET=your-nextauth-secret-key
+   # ... all other variables from .env.local
+   ```
 
-**Important:**
-- `NEXT_PUBLIC_SOCKET_URL` must be the Render socket server URL
-- `NEXTAUTH_URL` should be your Vercel app URL
-- Generate `NEXTAUTH_SECRET` using: `openssl rand -base64 32`
+3. **Skip `NEXTAUTH_URL` for now** - you'll add it after deployment
+
+4. Deploy the project
+
+5. **After deployment**, Vercel will show you the app URL (e.g., `https://your-app.vercel.app`)
+
+6. Go back to Environment Variables and add:
+   ```
+   NEXTAUTH_URL=https://your-app.vercel.app
+   ```
+
+7. Redeploy (or wait for auto-redeploy if you have auto-deploy enabled)
+
+**Important Notes:**
+- `NEXT_PUBLIC_SOCKET_URL` must be your Render socket server URL: `https://gameon-socket-server.onrender.com`
+- `NEXTAUTH_URL` should match your Vercel deployment URL (set this AFTER first deployment)
+- If you don't have `NEXTAUTH_SECRET`, generate it using: `openssl rand -base64 32`
+- You can add all variables at once, just remember to update `NEXTAUTH_URL` after getting your Vercel URL
 
 ### 2.4 Deploy
 

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geocodeAddress } from '@/lib/utils/geocoding';
 
+// Force dynamic rendering since we use request.url
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/geocode?address=...
  * Geocode an address to get coordinates

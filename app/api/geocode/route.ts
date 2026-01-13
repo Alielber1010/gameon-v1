@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { geocodeAddress } from '@/lib/utils/geocoding';
 
-// Force dynamic rendering since we use request.url
+// Force dynamic rendering - this route processes user input at runtime
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/geocode?address=...
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = request.nextUrl;
     const address = searchParams.get('address');
 
     if (!address) {

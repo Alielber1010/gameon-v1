@@ -1,4 +1,7 @@
 // C:\gameon-v1\app\layout.tsx
+// Force IPv4 DNS resolution for Render and external APIs
+import "@/lib/force-ipv4"
+
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"

@@ -63,9 +63,7 @@ export function InlineGameChat({ gameId, isPlayer, hasPendingRequest = false }: 
     // Only connect socket if user is logged in
     if (!session?.user) return
 
-    const socketUrl = typeof window !== 'undefined' 
-      ? window.location.origin 
-      : process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
     
     // Create socket instance with autoConnect to prevent duplicates
     const socketInstance = io(socketUrl, {

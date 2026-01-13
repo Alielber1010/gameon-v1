@@ -41,9 +41,7 @@ export function GameChat({ gameId, isOpen, onClose, isPlayer = false }: GameChat
   useEffect(() => {
     if (!isOpen || !gameId || !session?.user) return
 
-    const socketUrl = typeof window !== 'undefined' 
-      ? window.location.origin 
-      : process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
     
     const socketInstance = io(socketUrl, {
       path: '/api/socket',

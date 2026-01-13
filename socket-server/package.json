@@ -1,0 +1,23 @@
+{
+  "name": "gameon-socket-server",
+  "version": "1.0.0",
+  "description": "Standalone Socket.io server for GameOn sports platform",
+  "main": "server.ts",
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "start": "tsx server.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "mongoose": "^8.21.0",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0 <19.0.0"
+  }
+}

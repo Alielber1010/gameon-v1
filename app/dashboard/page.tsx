@@ -8,6 +8,7 @@ import { getTimeOfDay } from "@/components/dashboard/timing-filters"
 import { GameDetailsModal } from "@/components/dashboard/game-details-modal"
 import { ReportModal } from "@/components/dashboard/report-modal"
 import { CreateGameModal } from "@/components/dashboard/create-game-modal"
+import { HomepageStats } from "@/components/dashboard/homepage-stats"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Plus, Loader2, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -155,6 +156,8 @@ export default function DashboardPage() {
         <SidebarTrigger />
         <h1 className="text-2xl font-bold">Find Your Game</h1>
       </div>
+
+      <HomepageStats />
 
       <div className="flex items-center gap-4">
         <div className="flex-1">

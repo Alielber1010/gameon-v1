@@ -51,11 +51,17 @@ export async function GET(request: NextRequest) {
       createdAt: { $gte: oneMonthAgo }
     });
 
-    // Online users (users with activity in last 15 minutes - using updatedAt as proxy)
-    // In a real app, you'd track this with sessions or socket connections
+    // Online users (users with lastSeen in last 15 minutes)
+    // Falls back to updatedAt if lastSeen doesn't exist (for existing users)
     const onlineUsers = await User.countDocuments({
       role: { $ne: 'admin' },
-      updatedAt: { $gte: fifteenMinutesAgo }
+      $or: [
+        { lastSeen: { $gte: fifteenMinutesAgo } },
+        { 
+          lastSeen: { $exists: false },
+          updatedAt: { $gte: fifteenMinutesAgo }
+        }
+      ]
     });
 
     // Banned users

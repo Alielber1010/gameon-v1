@@ -10,7 +10,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
-import { BarChart3, Flag, Users, Settings, LogOut, Gamepad2 } from "lucide-react"
+import { BarChart3, Flag, Users, LogOut, Gamepad2 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -37,11 +37,6 @@ const menuItems = [
     url: "/admin/users",
     icon: Users,
   },
-  {
-    title: "Settings",
-    url: "/admin/settings",
-    icon: Settings,
-  },
 ]
 
 export function AdminSidebar() {
@@ -51,7 +46,7 @@ export function AdminSidebar() {
     <Sidebar className="bg-red-600 text-white">
       <SidebarHeader className="p-4">
         <div className="flex items-center space-x-2">
-          <Logo className="text-white" />
+          <Logo variant="full" theme="white" className="text-white" />
           <span className="text-xs bg-red-700 px-2 py-1 rounded">ADMIN</span>
         </div>
       </SidebarHeader>

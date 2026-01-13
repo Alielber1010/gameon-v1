@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
       bio: user.bio || '',
       phoneNumber: user.phoneNumber || '',
       location: user.location || '',
+      interests: user.interests || [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       gamesPlayed: user.gamesPlayed || 0,
@@ -88,7 +89,7 @@ export async function PUT(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
-    const { name, bio, phoneNumber, location } = body;
+    const { name, bio, phoneNumber, location, interests, image } = body;
 
     // Validate user exists
     const user = await User.findById(authResult.id);
@@ -105,6 +106,13 @@ export async function PUT(request: NextRequest) {
     if (bio !== undefined) user.bio = bio;
     if (phoneNumber !== undefined) user.phoneNumber = phoneNumber;
     if (location !== undefined) user.location = location;
+    if (image !== undefined) user.image = image;
+    if (interests !== undefined) {
+      // Validate max 5 interests
+      if (Array.isArray(interests) && interests.length <= 5) {
+        user.interests = interests.filter((interest: string) => interest && interest.trim().length > 0);
+      }
+    }
 
     await user.save();
 
@@ -124,6 +132,7 @@ export async function PUT(request: NextRequest) {
       bio: user.bio || '',
       phoneNumber: user.phoneNumber || '',
       location: user.location || '',
+      interests: user.interests || [],
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       stats: {

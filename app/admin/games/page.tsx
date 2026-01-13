@@ -26,6 +26,9 @@ export default function AdminGamesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [sportFilter, setSportFilter] = useState<string>("all")
+  const [availableSports, setAvailableSports] = useState<string[]>([])
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
 
   // Check for gameId in URL query params (from report modal navigation)
@@ -69,7 +72,24 @@ export default function AdminGamesPage() {
     if (searchQuery !== undefined) {
       fetchGames()
     }
-  }, [searchQuery, priorityFilter])
+  }, [searchQuery, priorityFilter, statusFilter, sportFilter])
+
+  useEffect(() => {
+    // Fetch available sports from API
+    fetchAvailableSports()
+  }, [])
+
+  const fetchAvailableSports = async () => {
+    try {
+      const response = await fetch('/api/admin/games/sports')
+      const data = await response.json()
+      if (data.success) {
+        setAvailableSports(data.sports || [])
+      }
+    } catch (error) {
+      console.error('Error fetching sports:', error)
+    }
+  }
 
   const fetchGames = async () => {
     try {
@@ -80,6 +100,12 @@ export default function AdminGamesPage() {
       }
       if (priorityFilter && priorityFilter !== "all") {
         params.append("priority", priorityFilter)
+      }
+      if (statusFilter && statusFilter !== "all") {
+        params.append("status", statusFilter)
+      }
+      if (sportFilter && sportFilter !== "all") {
+        params.append("sport", sportFilter)
       }
 
       const response = await fetch(`/api/admin/games?${params.toString()}`)
@@ -140,8 +166,8 @@ export default function AdminGamesPage() {
             />
           </div>
           
-          {/* Priority Filter */}
-          <div className="flex items-center gap-3 pt-2 border-t">
+          {/* Filters Row */}
+          <div className="flex items-center gap-3 pt-2 border-t flex-wrap">
             <Label htmlFor="priority" className="text-sm font-medium">
               Priority:
             </Label>
@@ -154,6 +180,39 @@ export default function AdminGamesPage() {
                 <SelectItem value="green">No Reports (Green)</SelectItem>
                 <SelectItem value="yellow">1-5 Reports (Yellow)</SelectItem>
                 <SelectItem value="red">5+ Reports (Red)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Label htmlFor="status" className="text-sm font-medium ml-4">
+              Status:
+            </Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger id="status" className="w-[200px]">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
+                <SelectItem value="ongoing">Ongoing</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Label htmlFor="sport" className="text-sm font-medium ml-4">
+              Sport:
+            </Label>
+            <Select value={sportFilter} onValueChange={setSportFilter}>
+              <SelectTrigger id="sport" className="w-[200px]">
+                <SelectValue placeholder="All sports" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sports</SelectItem>
+                {availableSports.map((sport) => (
+                  <SelectItem key={sport} value={sport}>
+                    {sport.charAt(0).toUpperCase() + sport.slice(1).replace(/-/g, ' ')}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

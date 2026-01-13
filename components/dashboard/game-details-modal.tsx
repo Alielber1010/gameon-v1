@@ -390,7 +390,12 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
 
       {/* Public User Profile Modal */}
       {selectedUser && (
-        <PublicUserProfileModal user={selectedUser} isOpen={!!selectedUser} onClose={() => setSelectedUser(null)} />
+        <PublicUserProfileModal 
+          user={selectedUser} 
+          isOpen={!!selectedUser} 
+          onClose={() => setSelectedUser(null)}
+          game={game.status === 'upcoming' ? game : null}
+        />
       )}
     </>
   )

@@ -1,16 +1,18 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Users } from "lucide-react"
+import { Users, Gamepad2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
 interface StatsData {
   totalPlayers: number
+  totalGames: number
 }
 
-export function StatsCards() {
+export function HomepageStats() {
   const [stats, setStats] = useState<StatsData>({
     totalPlayers: 0,
+    totalGames: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -41,16 +43,21 @@ export function StatsCards() {
       label: "Players",
       value: formatNumber(stats.totalPlayers),
     },
+    {
+      icon: Gamepad2,
+      label: "Upcoming Games",
+      value: formatNumber(stats.totalGames),
+    },
   ]
 
   return (
-    <div className="grid grid-cols-1 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
       {statsConfig.map((stat, index) => (
         <Card key={index} className="bg-white/80 backdrop-blur-sm border-green-200">
-          <CardContent className="p-2 text-center">
-            <stat.icon className="h-5 w-5 text-green-600 mx-auto mb-1" />
-            <div className="text-xs text-gray-600 mb-0.5">{stat.label}</div>
-            <div className="text-lg font-bold text-green-600">
+          <CardContent className="p-4 text-center">
+            <stat.icon className="h-8 w-8 text-green-600 mx-auto mb-2" />
+            <div className="text-sm text-gray-600 mb-1">{stat.label}</div>
+            <div className="text-2xl font-bold text-green-600">
               {loading ? "..." : stat.value}
             </div>
           </CardContent>

@@ -387,6 +387,7 @@ export function CompletedGameDetailsModal({
           user={selectedUserProfile}
           isOpen={!!selectedUserProfile}
           onClose={() => setSelectedUserProfile(null)}
+          game={null}
         />
       )}
     </>

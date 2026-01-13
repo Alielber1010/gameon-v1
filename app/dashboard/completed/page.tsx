@@ -1,13 +1,22 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Users, Calendar, Clock, Loader2, Trophy, Star, Flag, CheckCircle2, TrendingUp } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { MapPin, Users, Calendar, Clock, Loader2, Trophy, Star, Flag, CheckCircle2, TrendingUp, Crown, Award, Target, UserCheck, UserX, Gamepad2, Activity, Zap, BarChart3 } from "lucide-react"
+import Image from "next/image"
 import { CompletedGameDetailsModal } from "@/components/dashboard/completed-game-details-modal"
 import { ReportModal } from "@/components/dashboard/report-modal"
 import type { Game } from "@/lib/db/models/types/game"
@@ -63,12 +72,23 @@ function CompletedGamesPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [reportingGame, setReportingGame] = useState<Game | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("recent");
+  const [filterBy, setFilterBy] = useState<string>("all");
   const [analytics, setAnalytics] = useState({
     totalGames: 0,
     gamesAttended: 0,
     averageRating: 0,
     totalRatings: 0,
     mostPlayedSport: '',
+    gamesHosted: 0,
+    gamesJoined: 0,
+    totalPlayersPlayedWith: 0,
+    uniqueSportsCount: 0,
+    gamesThisMonth: 0,
+    attendanceRate: 0,
+    ratingCompletionRate: 0,
+    totalHoursPlayed: 0,
   });
 
   useEffect(() => {
@@ -119,6 +139,68 @@ function CompletedGamesPageContent() {
         // Calculate analytics
         const totalGames = transformedGames.length;
         const gamesAttended = transformedGames.filter(g => g.userAttended).length;
+        const attendanceRate = totalGames > 0 ? (gamesAttended / totalGames) * 100 : 0;
+        
+        // Games hosted vs joined
+        const gamesHosted = transformedGames.filter(g => g.isHost).length;
+        const gamesJoined = transformedGames.filter(g => !g.isHost).length;
+        
+        // Total unique players played with
+        const uniquePlayerIds = new Set<string>();
+        transformedGames.forEach(game => {
+          if (game.hostId) uniquePlayerIds.add(game.hostId);
+          game.registeredPlayers?.forEach((player: any) => {
+            const playerId = player.userId?.toString() || player.id?.toString() || player.userId;
+            if (playerId) uniquePlayerIds.add(playerId);
+          });
+        });
+        // Remove current user from count
+        const currentUserId = session?.user?.id;
+        if (currentUserId) uniquePlayerIds.delete(currentUserId);
+        const totalPlayersPlayedWith = uniquePlayerIds.size;
+        
+        // Unique sports count
+        const uniqueSports = new Set(transformedGames.map(g => g.sport).filter(Boolean));
+        const uniqueSportsCount = uniqueSports.size;
+        
+        // Games this month
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const gamesThisMonth = transformedGames.filter(game => {
+          const gameDate = game.completedAt ? new Date(game.completedAt) : new Date(game.date);
+          return gameDate >= startOfMonth;
+        }).length;
+        
+        // Rating completion rate
+        const gamesWithRatings = transformedGames.filter(game => {
+          const totalPlayers = (game.registeredPlayers?.length || 0) + 1;
+          const playersRated = game.playersRated?.length || 0;
+          const playersToRate = totalPlayers - playersRated - 1;
+          return playersToRate === 0 && totalPlayers > 1;
+        }).length;
+        const ratingCompletionRate = totalGames > 0 ? (gamesWithRatings / totalGames) * 100 : 0;
+        
+        // Total hours played (estimate from game duration)
+        let totalHoursPlayed = 0;
+        transformedGames.forEach(game => {
+          if (game.time && game.endTime) {
+            try {
+              const [startHour, startMin] = game.time.split(':').map(Number);
+              const [endHour, endMin] = game.endTime.split(':').map(Number);
+              const startMinutes = startHour * 60 + startMin;
+              const endMinutes = endHour * 60 + endMin;
+              let durationMinutes = endMinutes - startMinutes;
+              if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight games
+              totalHoursPlayed += durationMinutes / 60;
+            } catch (e) {
+              // If parsing fails, estimate 2 hours per game
+              totalHoursPlayed += 2;
+            }
+          } else {
+            // Default estimate if no end time
+            totalHoursPlayed += 2;
+          }
+        });
         
         // Get user stats for rating
         try {
@@ -131,6 +213,14 @@ function CompletedGamesPageContent() {
               averageRating: userData.user.averageRating || 0,
               totalRatings: userData.user.totalRatings || 0,
               mostPlayedSport: getMostPlayedSport(transformedGames),
+              gamesHosted,
+              gamesJoined,
+              totalPlayersPlayedWith,
+              uniqueSportsCount,
+              gamesThisMonth,
+              attendanceRate,
+              ratingCompletionRate,
+              totalHoursPlayed: Math.round(totalHoursPlayed),
             });
           } else {
             setAnalytics({
@@ -139,6 +229,14 @@ function CompletedGamesPageContent() {
               averageRating: 0,
               totalRatings: 0,
               mostPlayedSport: getMostPlayedSport(transformedGames),
+              gamesHosted,
+              gamesJoined,
+              totalPlayersPlayedWith,
+              uniqueSportsCount,
+              gamesThisMonth,
+              attendanceRate,
+              ratingCompletionRate,
+              totalHoursPlayed: Math.round(totalHoursPlayed),
             });
           }
         } catch (err) {
@@ -148,6 +246,14 @@ function CompletedGamesPageContent() {
             averageRating: 0,
             totalRatings: 0,
             mostPlayedSport: getMostPlayedSport(transformedGames),
+            gamesHosted,
+            gamesJoined,
+            totalPlayersPlayedWith,
+            uniqueSportsCount,
+            gamesThisMonth,
+            attendanceRate,
+            ratingCompletionRate,
+            totalHoursPlayed: Math.round(totalHoursPlayed),
           });
         }
       } else {
@@ -197,6 +303,67 @@ function CompletedGamesPageContent() {
     }
     return time;
   };
+
+  // Filter and sort games
+  const filteredAndSortedGames = useMemo(() => {
+    let filtered = [...games];
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(game => 
+        game.title.toLowerCase().includes(query) ||
+        game.sport.toLowerCase().includes(query) ||
+        game.hostName?.toLowerCase().includes(query) ||
+        (typeof game.location === 'string' ? game.location.toLowerCase() : game.location?.address?.toLowerCase() || '').includes(query)
+      );
+    }
+
+    // Apply status filter
+    if (filterBy !== 'all') {
+      if (filterBy === 'attended') {
+        filtered = filtered.filter(game => game.userAttended === true);
+      } else if (filterBy === 'not-attended') {
+        filtered = filtered.filter(game => game.userAttended === false);
+      } else if (filterBy === 'rated') {
+        filtered = filtered.filter(game => {
+          const totalPlayers = (game.registeredPlayers?.length || 0) + 1;
+          const playersRated = game.playersRated?.length || 0;
+          const playersToRate = totalPlayers - playersRated - 1;
+          return playersToRate === 0 && totalPlayers > 1;
+        });
+      } else if (filterBy === 'not-rated') {
+        filtered = filtered.filter(game => {
+          const totalPlayers = (game.registeredPlayers?.length || 0) + 1;
+          const playersRated = game.playersRated?.length || 0;
+          const playersToRate = totalPlayers - playersRated - 1;
+          return playersToRate > 0;
+        });
+      }
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'recent':
+          const dateA = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.date).getTime();
+          const dateB = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.date).getTime();
+          return dateB - dateA;
+        case 'oldest':
+          const dateAOld = a.completedAt ? new Date(a.completedAt).getTime() : new Date(a.date).getTime();
+          const dateBOld = b.completedAt ? new Date(b.completedAt).getTime() : new Date(b.date).getTime();
+          return dateAOld - dateBOld;
+        case 'sport':
+          return (a.sport || '').localeCompare(b.sport || '');
+        case 'title':
+          return (a.title || '').localeCompare(b.title || '');
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [games, searchQuery, sortBy, filterBy]);
 
   if (status === 'loading' || isLoading) {
     return (
@@ -297,101 +464,234 @@ function CompletedGamesPageContent() {
         </div>
       )}
 
+      {/* Search and Filter Bar */}
+      {games.length > 0 && (
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="Search games by title, sport, host, or location..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Select value={filterBy} onValueChange={setFilterBy}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Games</SelectItem>
+                    <SelectItem value="attended">Attended</SelectItem>
+                    <SelectItem value="not-attended">Not Attended</SelectItem>
+                    <SelectItem value="rated">All Rated</SelectItem>
+                    <SelectItem value="not-rated">Needs Rating</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Most Recent</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="sport">Sport (A-Z)</SelectItem>
+                    <SelectItem value="title">Title (A-Z)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {searchQuery || filterBy !== 'all' ? (
+              <div className="text-sm text-gray-600">
+                Showing {filteredAndSortedGames.length} of {games.length} games
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
+
       {games.length === 0 ? (
         <div className="text-center py-12">
           <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-400" />
           <h3 className="text-xl font-semibold mb-2">No Completed Games Yet</h3>
           <p className="text-gray-600">Games you've participated in will appear here after completion.</p>
         </div>
+      ) : filteredAndSortedGames.length === 0 ? (
+        <div className="text-center py-12">
+          <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+          <h3 className="text-xl font-semibold mb-2">No Games Match Your Filters</h3>
+          <p className="text-gray-600">Try adjusting your search or filter criteria.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {games.map((game) => (
-            <Card
-              key={game.id}
-              className="relative overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-            >
-              <div className="relative">
-                <img
-                  src={game.image || "/placeholder.svg"}
-                  alt={game.title}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="absolute top-2 right-2 flex gap-2">
-                  <Badge className="bg-green-600 text-white">
-                    <Trophy className="h-3 w-3 mr-1" />
-                    Completed
-                  </Badge>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleReport(game);
-                    }}
-                    className="h-6 w-6 p-0 bg-white/80 hover:bg-white"
-                  >
-                    <Flag className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-
-              <CardContent className="p-4" onClick={() => handleGameClick(game)}>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg">{game.title}</h3>
-                  </div>
-
-                  {/* Sport Type */}
-                  <div className="flex items-center gap-2 text-sm">
-                    <Badge variant="secondary" className="bg-green-100 text-green-700">
-                      {game.sport}
+          {filteredAndSortedGames.map((game) => {
+            const totalPlayers = (game.registeredPlayers?.length || 0) + 1;
+            const playersRated = game.playersRated?.length || 0;
+            const playersToRate = totalPlayers - playersRated - 1; // Exclude self
+            const skillLevelDisplay = game.skillLevel === 'all' ? 'All Levels' : game.skillLevel?.charAt(0).toUpperCase() + game.skillLevel?.slice(1) || 'N/A';
+            const completionDate = game.completedAt ? formatDate(game.completedAt) : null;
+            
+            return (
+              <Card
+                key={game.id}
+                className="relative overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-green-500"
+              >
+                <div className="relative">
+                  <img
+                    src={game.image || "/placeholder.svg"}
+                    alt={game.title}
+                    className="w-full h-52 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                  <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+                    <Badge className="bg-green-600 text-white shadow-lg">
+                      <Trophy className="h-3 w-3 mr-1" />
+                      Completed
                     </Badge>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReport(game);
+                      }}
+                      className="h-7 w-7 p-0 bg-white/90 hover:bg-white shadow-md"
+                    >
+                      <Flag className="h-3 w-3 text-red-600" />
+                    </Button>
                   </div>
-
-                  {/* Date and Time */}
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="h-4 w-4" />
-                    <span>{formatDate(game.date)}</span>
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <h3 className="font-bold text-xl text-white drop-shadow-lg line-clamp-2">{game.title}</h3>
                   </div>
-                  {game.time && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="h-4 w-4" />
-                      <span>{formatTime(game.time)}</span>
-                    </div>
-                  )}
+                </div>
 
-                  {/* Location */}
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="h-4 w-4" />
-                    {(() => {
-                      const locationDisplay = formatLocationForDisplay(game.location);
-                      return <span className="truncate">{locationDisplay.text}</span>;
-                    })()}
-                  </div>
-
-                  {/* Players */}
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4" />
-                    <span>
-                      {((game.registeredPlayers?.length || 0) + 1)} / {game.maxPlayers || 'N/A'} players
-                    </span>
-                  </div>
-
-                  {/* Attendance Status */}
-                  {game.userAttended !== undefined && (
-                    <div className="pt-2 border-t">
-                      <Badge
-                        variant={game.userAttended ? "default" : "secondary"}
-                        className={game.userAttended ? "bg-green-600" : "bg-gray-200"}
-                      >
-                        {game.userAttended ? "✓ Attended" : "✗ Not Attended"}
+                <CardContent className="p-5" onClick={() => handleGameClick(game)}>
+                  <div className="space-y-4">
+                    {/* Sport and Skill Level */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 font-semibold">
+                        {game.sport?.charAt(0).toUpperCase() + game.sport?.slice(1).replace(/-/g, ' ') || 'Sport'}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        <Target className="h-3 w-3 mr-1" />
+                        {skillLevelDisplay}
                       </Badge>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                    {/* Host Information */}
+                    {game.hostName && (
+                      <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                        {game.hostImage ? (
+                          <Image
+                            src={game.hostImage}
+                            alt={game.hostName}
+                            width={32}
+                            height={32}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">{game.hostName.charAt(0)}</span>
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-medium text-gray-900 truncate">{game.hostName}</span>
+                            <Crown className="h-3 w-3 text-yellow-600 flex-shrink-0" />
+                          </div>
+                          <span className="text-xs text-gray-500">Host</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Date, Time, and Duration */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                        <span className="font-medium">{formatDate(game.date)}</span>
+                      </div>
+                      {game.time && (
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Clock className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          <span>{formatTime(game.time)}</span>
+                          {game.endTime && (
+                            <span className="text-gray-500">- {formatTime(game.endTime)}</span>
+                          )}
+                        </div>
+                      )}
+                      {completionDate && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Completed on {completionDate}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-start gap-2 text-sm text-gray-700">
+                      <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                      <span className="line-clamp-2">
+                        {(() => {
+                          const locationDisplay = formatLocationForDisplay(game.location);
+                          return locationDisplay.text;
+                        })()}
+                      </span>
+                    </div>
+
+                    {/* Players and Attendance */}
+                    <div className="pt-3 border-t space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-500" />
+                          <span className="font-medium text-gray-700">
+                            {totalPlayers} / {game.maxPlayers || 'N/A'} players
+                          </span>
+                        </div>
+                        {game.userAttended !== undefined && (
+                          <Badge
+                            variant={game.userAttended ? "default" : "secondary"}
+                            className={game.userAttended ? "bg-green-600" : "bg-gray-300 text-gray-700"}
+                          >
+                            {game.userAttended ? (
+                              <>
+                                <UserCheck className="h-3 w-3 mr-1" />
+                                Attended
+                              </>
+                            ) : (
+                              <>
+                                <UserX className="h-3 w-3 mr-1" />
+                                Not Attended
+                              </>
+                            )}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Rating Status */}
+                      {playersToRate > 0 && (
+                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                          <Award className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                          <span className="text-xs text-blue-700 font-medium">
+                            {playersToRate} {playersToRate === 1 ? 'player' : 'players'} remaining to rate
+                          </span>
+                        </div>
+                      )}
+                      {playersToRate === 0 && totalPlayers > 1 && (
+                        <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
+                          <Star className="h-4 w-4 text-green-600 flex-shrink-0 fill-green-600" />
+                          <span className="text-xs text-green-700 font-medium">
+                            All players rated
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 

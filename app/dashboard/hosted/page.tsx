@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Users, Calendar, Clock, Edit, Trash2, Loader2, ExternalLink, Crown } from "lucide-react"
+import { MapPin, Users, Calendar, Clock, Edit, Trash2, Loader2, ExternalLink, Crown, Hourglass, Gamepad2, Inbox } from "lucide-react"
 import { HostedGameManagementModal } from "@/components/dashboard/hosted-game-management-modal"
 import { UserProfileModal } from "@/components/dashboard/user-profile-modal"
 import { EditGameModal } from "@/components/dashboard/edit-game-modal"
@@ -86,13 +86,7 @@ export default function HostedGamesPage() {
   const [pendingRequestGames, setPendingRequestGames] = useState<Game[]>([]);
   const [loadingPendingRequests, setLoadingPendingRequests] = useState(false);
 
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchPendingRequestGames();
-    }
-  }, [status]);
-
-  const fetchPendingRequestGames = async () => {
+  const fetchPendingRequestGames = useCallback(async () => {
     setLoadingPendingRequests(true);
     try {
       const response = await getGamesWithPendingRequests();
@@ -104,7 +98,13 @@ export default function HostedGamesPage() {
     } finally {
       setLoadingPendingRequests(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchPendingRequestGames();
+    }
+  }, [status, fetchPendingRequestGames]);
 
   const loading = loadingHosted || loadingAll;
   const error = errorHosted || errorAll;
@@ -136,9 +136,9 @@ export default function HostedGamesPage() {
   }, [allApiGames, session?.user?.id]);
 
   // Refetch function that refetches all
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     await Promise.all([refetchHosted(), refetchAll(), fetchPendingRequestGames()]);
-  };
+  }, [refetchHosted, refetchAll, fetchPendingRequestGames]);
 
   // Check for gameId in URL query params and open that game's modal
   useEffect(() => {
@@ -333,11 +333,27 @@ export default function HostedGamesPage() {
         <h1 className="text-2xl font-bold text-green-600">Upcoming Games</h1>
       </div>
 
-      {/* Hosted Games Section */}
-      {hostedGames.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold text-gray-800">Hosted Games</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Main Layout: Two columns - Main content and Pending Requests Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Main Content Area - Hosted and Joined Games */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* Hosted Games Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-600" />
+              <h2 className="text-xl font-semibold text-gray-800">Hosted Games</h2>
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-700">
+                {hostedGames.length}
+              </Badge>
+            </div>
+            {loadingHosted ? (
+              <Card className="border-2 border-yellow-200 bg-yellow-50/50">
+                <CardContent className="p-6 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-yellow-600 mx-auto" />
+                </CardContent>
+              </Card>
+            ) : hostedGames.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {hostedGames.map((game) => (
               <Card 
                 key={game.id} 
@@ -427,197 +443,218 @@ export default function HostedGamesPage() {
                 </div>
               </CardContent>
             </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Pending Join Requests Section */}
-      {pendingRequestGames.length > 0 && (
-        <div className="space-y-4 mt-8">
-          <h2 className="text-xl font-semibold text-gray-800">Pending Join Requests</h2>
-          <p className="text-sm text-gray-500 mb-4">Games you've requested to join - waiting for host approval</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pendingRequestGames.map((game) => (
-              <Card 
-                key={game.id} 
-                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative border-2 border-orange-200"
-                onClick={() => handleGameClick(game)}
-              >
-                <div className="relative">
-                  <img src={game.image || "/placeholder.svg"} alt={game.title} className="w-full h-48 object-cover" />
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                      Pending
-                    </Badge>
+              ))}
+              </div>
+            ) : (
+              <Card className="border-2 border-dashed border-gray-200">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Crown className="h-8 w-8 text-yellow-600" />
                   </div>
-                  <div className="absolute top-2 left-2">
-                    <Badge variant="secondary" className="bg-green-100 text-green-700">
-                      {game.sport}
-                    </Badge>
-                  </div>
-                </div>
-
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg">
-                      {game.title}
-                    </h3>
-                  </div>
-
-                  <p className="text-sm text-gray-600 line-clamp-2">{game.description}</p>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
-                      {(() => {
-                        const locationDisplay = formatLocationForDisplay(game.location)
-                        if (locationDisplay.isLink && locationDisplay.url) {
-                          return (
-                            <a
-                              href={locationDisplay.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1 text-sm"
-                            >
-                              {locationDisplay.text}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )
-                        }
-                        return <span className="text-sm">{locationDisplay.text}</span>
-                      })()}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span>{game.date}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gray-500" />
-                      <span>{game.time}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-500" />
-                      <span>{game.seatsLeft} spots available</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Skill level:</span>
-                      <Badge variant="outline" className="text-xs">
-                        {game.skillLevel}
-                      </Badge>
-                    </div>
-                  </div>
+                  <p className="text-gray-600 font-medium mb-1">No Hosted Games</p>
+                  <p className="text-sm text-gray-500">Games you create will appear here</p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Joined Games Section */}
-      {joinedGames.length > 0 && (
-        <div className="space-y-4 mt-8">
-          <h2 className="text-xl font-semibold text-gray-800">Joined Games</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {joinedGames.map((game) => (
-              <Card 
-                key={game.id} 
-                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => handleGameClick(game)}
-              >
-                <div className="relative">
-                  <img src={game.image || "/placeholder.svg"} alt={game.title} className="w-full h-48 object-cover" />
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-green-100 text-green-700">
-                      {game.sport}
-                    </Badge>
-                  </div>
-                </div>
-
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg">
-                      {game.title}
-                    </h3>
-                  </div>
-
-                  <p className="text-sm text-gray-600 line-clamp-2">{game.description}</p>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
-                      {(() => {
-                        const locationDisplay = formatLocationForDisplay(game.location)
-                        if (locationDisplay.isLink && locationDisplay.url) {
-                          return (
-                            <a
-                              href={locationDisplay.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1 text-sm"
-                            >
-                              {locationDisplay.text}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )
-                        }
-                        return <span className="text-sm">{locationDisplay.text}</span>
-                      })()}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span>{game.date}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-gray-500" />
-                      <span>{game.time}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-gray-500" />
-                      <span>{game.seatsLeft} spots available</span>
-                    </div>
-
-                    {game.joinRequests && game.joinRequests.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                          {game.joinRequests.length} pending requests
+          {/* Joined Games Section */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Gamepad2 className="h-5 w-5 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-800">Joined Games</h2>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                {joinedGames.length}
+              </Badge>
+            </div>
+            {loadingAll ? (
+              <Card className="border-2 border-blue-200 bg-blue-50/50">
+                <CardContent className="p-6 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-blue-600 mx-auto" />
+                </CardContent>
+              </Card>
+            ) : joinedGames.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {joinedGames.map((game) => (
+                  <Card 
+                    key={game.id} 
+                    className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => handleGameClick(game)}
+                  >
+                    <div className="relative">
+                      <img src={game.image || "/placeholder.svg"} alt={game.title} className="w-full h-48 object-cover" />
+                      <div className="absolute top-2 right-2">
+                        <Badge variant="secondary" className="bg-green-100 text-green-700">
+                          {game.sport}
                         </Badge>
                       </div>
-                    )}
-
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Skill level:</span>
-                      <Badge variant="outline" className="text-xs">
-                        {game.skillLevel}
-                      </Badge>
                     </div>
+
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-bold text-lg">
+                          {game.title}
+                        </h3>
+                      </div>
+
+                      <p className="text-sm text-gray-600 line-clamp-2">{game.description}</p>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-gray-500" />
+                          {(() => {
+                            const locationDisplay = formatLocationForDisplay(game.location)
+                            if (locationDisplay.isLink && locationDisplay.url) {
+                              return (
+                                <a
+                                  href={locationDisplay.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1 text-sm"
+                                >
+                                  {locationDisplay.text}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )
+                            }
+                            return <span className="text-sm">{locationDisplay.text}</span>
+                          })()}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-gray-500" />
+                          <span>{game.date}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-gray-500" />
+                          <span>{game.time}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-500" />
+                          <span>{game.seatsLeft} spots available</span>
+                        </div>
+
+                        {game.joinRequests && game.joinRequests.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                              {game.joinRequests.length} pending requests
+                            </Badge>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Skill level:</span>
+                          <Badge variant="outline" className="text-xs">
+                            {game.skillLevel}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-2 border-dashed border-gray-200">
+                <CardContent className="p-8 text-center">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Gamepad2 className="h-8 w-8 text-blue-600" />
                   </div>
+                  <p className="text-gray-600 font-medium mb-1">No Joined Games</p>
+                  <p className="text-sm text-gray-500">Games you join will appear here</p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
         </div>
-      )}
 
-      {/* Empty State */}
-      {!loading && hostedGames.length === 0 && joinedGames.length === 0 && (
-        <div className="text-center py-12">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Users className="h-12 w-12 text-green-600" />
+        {/* Pending Requests Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="space-y-4 sticky top-6">
+            <div className="flex items-center gap-2">
+              <Hourglass className="h-5 w-5 text-orange-600" />
+              <h2 className="text-lg font-semibold text-gray-800">Pending Requests</h2>
+              <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                {pendingRequestGames.length}
+              </Badge>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">Waiting for host approval</p>
+            
+            {loadingPendingRequests ? (
+              <Card className="border-2 border-orange-200 bg-orange-50/50">
+                <CardContent className="p-6 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-orange-600 mx-auto" />
+                </CardContent>
+              </Card>
+            ) : pendingRequestGames.length > 0 ? (
+              <div className="space-y-3">
+                {pendingRequestGames.map((game) => (
+                  <Card 
+                    key={game.id} 
+                    className="overflow-hidden hover:shadow-lg transition-all cursor-pointer relative border-2 border-orange-300 bg-gradient-to-br from-orange-50 to-orange-100/50 hover:border-orange-400"
+                    onClick={() => handleGameClick(game)}
+                  >
+                    <div className="relative">
+                      <img src={game.image || "/placeholder.svg"} alt={game.title} className="w-full h-32 object-cover" />
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-orange-600 text-white shadow-md">
+                          <Hourglass className="h-3 w-3 mr-1" />
+                          Pending
+                        </Badge>
+                      </div>
+                      <div className="absolute top-2 left-2">
+                        <Badge variant="secondary" className="bg-white/90 text-green-700 backdrop-blur-sm">
+                          {game.sport}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <CardContent className="p-3 space-y-2">
+                      <h3 className="font-bold text-sm line-clamp-2">
+                        {game.title}
+                      </h3>
+
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center gap-1.5 text-gray-600">
+                          <Calendar className="h-3 w-3 text-gray-400" />
+                          <span className="truncate">{game.date}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-gray-600">
+                          <Clock className="h-3 w-3 text-gray-400" />
+                          <span>{game.time}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 text-gray-600">
+                          <MapPin className="h-3 w-3 text-gray-400" />
+                          <span className="truncate text-xs">
+                            {(() => {
+                              const locationDisplay = formatLocationForDisplay(game.location)
+                              return locationDisplay.text
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-2 border-dashed border-orange-200 bg-orange-50/30">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Inbox className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <p className="text-gray-600 font-medium text-sm mb-1">No Pending Requests</p>
+                  <p className="text-xs text-gray-500">Your join requests will appear here</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
-          <p className="text-gray-500 text-lg mb-2">No upcoming games yet</p>
-          <p className="text-gray-400">Create your first game or join a game to see them here!</p>
         </div>
-      )}
+      </div>
 
       {/* Hosted Game Management Modal */}
       {selectedGame && (

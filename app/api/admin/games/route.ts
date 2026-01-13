@@ -33,6 +33,8 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
     const search = searchParams.get('search') || '';
     const priority = searchParams.get('priority'); // 'green', 'yellow', 'red', or null
+    const status = searchParams.get('status'); // 'upcoming', 'ongoing', 'completed', 'cancelled', or null
+    const sport = searchParams.get('sport'); // sport name or null
 
     // Build query
     const query: any = {};
@@ -42,6 +44,12 @@ export async function GET(request: NextRequest) {
         { sport: { $regex: search, $options: 'i' } },
         { 'location.address': { $regex: search, $options: 'i' } },
       ];
+    }
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+    if (sport && sport !== 'all') {
+      query.sport = sport;
     }
 
     // Get all games (we need all to calculate priorities before filtering)
@@ -110,7 +118,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Filter by priority if specified
+    // Filter by priority if specified (status and sport are already filtered in the query)
     let filteredGames = transformedGames;
     if (priority) {
       filteredGames = transformedGames.filter((game) => game.priority === priority);

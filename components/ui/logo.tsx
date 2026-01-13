@@ -1,23 +1,53 @@
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 interface LogoProps {
   className?: string
+  variant?: "full" | "icon"
+  theme?: "green" | "white"
 }
 
-export function Logo({ className }: LogoProps) {
+export function Logo({ className, variant = "full", theme = "green" }: LogoProps) {
+  if (variant === "icon") {
+    // Use icon for compact spaces
+    return (
+      <div className="flex items-center">
+        <Image
+          src="/images/whitelogoicon.png"
+          alt="GameOn Icon"
+          width={32}
+          height={32}
+          className={cn("object-contain", className)}
+        />
+      </div>
+    )
+  }
+
+  // Use full logo
+  if (theme === "white") {
+    return (
+      <div className="flex items-center">
+        <Image
+          src="/images/fullwhitelogo.png"
+          alt="GameOn Logo"
+          width={200}
+          height={60}
+          className={cn("object-contain h-auto w-auto", className)}
+        />
+      </div>
+    )
+  }
+
+  // Default: green theme
   return (
-    <div className={cn("flex items-center space-x-2", className)}>
-      <div className="relative">
-        <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-          <div className="w-6 h-6 bg-white rounded-full relative">
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-600 rounded-full"></div>
-          </div>
-        </div>
-      </div>
-      <div className="text-2xl font-bold">
-        <span className="text-green-600">GameOn</span>
-        <div className="text-xs text-gray-600 -mt-1">SPORTS TEAM</div>
-      </div>
+    <div className="flex items-center">
+      <Image
+        src="/images/fullgreenlogo.png"
+        alt="GameOn Logo"
+        width={200}
+        height={60}
+        className={cn("object-contain h-auto w-auto", className)}
+      />
     </div>
   )
 }

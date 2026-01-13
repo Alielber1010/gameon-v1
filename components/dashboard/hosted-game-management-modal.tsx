@@ -721,6 +721,7 @@ export function HostedGameManagementModal({
         user={selectedUserProfile}
         isOpen={!!selectedUserProfile}
         onClose={() => setSelectedUserProfile(null)}
+        game={currentGame.status === 'upcoming' ? currentGame : null}
       />
     )}
     </>

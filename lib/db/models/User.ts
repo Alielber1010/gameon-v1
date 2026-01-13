@@ -13,6 +13,16 @@ const UserSchema = new mongoose.Schema({
   bio: String,
   phoneNumber: String,
   location: String,
+  interests: { 
+    type: [String], 
+    default: [],
+    validate: {
+      validator: function(v: string[]) {
+        return v.length <= 5;
+      },
+      message: 'Cannot have more than 5 interests'
+    }
+  },
   
   // Account status
   isBanned: { type: Boolean, default: false },
@@ -27,6 +37,7 @@ const UserSchema = new mongoose.Schema({
   gamesPlayed: { type: Number, default: 0 },
   averageRating: { type: Number, default: 0 },
   totalRatings: { type: Number, default: 0 },
+  lastSeen: { type: Date, default: Date.now }, // Track when user was last active
   
   // Activity history (completed games)
   activityHistory: [{

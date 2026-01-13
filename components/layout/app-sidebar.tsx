@@ -10,7 +10,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
-import { Home, Calendar, Trophy, Bot, Bell, User, LogOut, History, Activity } from "lucide-react"
+import { Home, Calendar, Bot, Bell, User, LogOut, History, Activity } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { getNotifications } from "@/lib/api/notifications"
+import Image from "next/image"
 
 const menuItems = [
   {
@@ -50,11 +51,6 @@ const menuItems = [
     title: "Notifications",
     url: "/dashboard/notifications",
     icon: Bell,
-  },
-  {
-    title: "Profile",
-    url: "/dashboard/profile",
-    icon: User,
   },
 ]
 
@@ -97,7 +93,7 @@ export function AppSidebar() {
   return (
     <Sidebar className="bg-green-600 text-white">
       <SidebarHeader className="p-4">
-        <Logo className="text-white" />
+        <Logo variant="full" theme="white" className="text-white" />
       </SidebarHeader>
 
       <SidebarContent className="px-2">
@@ -127,7 +123,41 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="p-2 space-y-2">
+        {/* Profile Button - Positioned lower */}
+        <div className="mt-4">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/dashboard/profile"}
+                className={cn(
+                  "text-white hover:bg-green-700 data-[active=true]:bg-green-700",
+                  pathname === "/dashboard/profile" && "bg-green-700",
+                )}
+              >
+                <Link href="/dashboard/profile" className="relative flex items-center gap-2">
+                  {session?.user?.image ? (
+                    <div className="relative h-5 w-5 rounded-full overflow-hidden flex-shrink-0 border border-white/20">
+                      <Image
+                        src={session.user.image}
+                        alt={session.user.name || "Profile"}
+                        width={20}
+                        height={20}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
+                  <span>{session?.user?.name || "Profile"}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </div>
+
+        {/* Logout Button */}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 

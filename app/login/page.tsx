@@ -10,7 +10,9 @@ export default function LoginPage() {
         {/* Left Side - Branding and Stats */}
         <div className="space-y-8">
           <div className="space-y-6">
-            <Logo className="h-16 w-auto" />
+            <div className="w-1/2">
+              <Logo variant="full" theme="green" className="w-full h-auto" />
+            </div>
             <div className="space-y-4">
               <h1 className="text-4xl lg:text-5xl font-bold text-gray-800 leading-tight">
                 BUILDING SPORTS

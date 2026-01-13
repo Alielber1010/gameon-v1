@@ -2,22 +2,58 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Star, Trophy, Calendar, Loader2 } from "lucide-react"
-import type { UserProfile } from "@/lib/db/models/types/game"
+import { Button } from "@/components/ui/button"
+import { Star, Trophy, Calendar, Loader2, Flag } from "lucide-react"
+import type { UserProfile, Game } from "@/lib/db/models/types/game"
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { getUserProfile, type PublicUserProfile } from "@/lib/api/users"
 import { toast } from "sonner"
+import { UserReportModal } from "./user-report-modal"
+import { useSession } from "next-auth/react"
 
 interface PublicUserProfileModalProps {
   user: UserProfile
   isOpen: boolean
   onClose: () => void
+  game?: Game | null // Optional game context for reporting
 }
 
-export function PublicUserProfileModal({ user, isOpen, onClose }: PublicUserProfileModalProps) {
+export function PublicUserProfileModal({ user, isOpen, onClose, game }: PublicUserProfileModalProps) {
+  const { data: session } = useSession()
   const [profileData, setProfileData] = useState<PublicUserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showReportModal, setShowReportModal] = useState(false)
+
+  // Check if user can report:
+  // 1. Game must exist and be in 'upcoming' status
+  // 2. Current user must be a registered player (not just pending)
+  // 3. Current user must NOT have a pending join request
+  const canReport = useMemo(() => {
+    if (!game || game.status !== 'upcoming' || !game.id || !session?.user?.id) {
+      return false
+    }
+
+    const currentUserId = session.user.id
+
+    // Check if user is the host
+    const isHost = game.hostId === currentUserId
+
+    // Check if user is a registered player (not just pending)
+    const isRegisteredPlayer = game.registeredPlayers?.some((player: any) => {
+      const playerId = player.userId?.toString() || player.userId || player.id
+      return playerId === currentUserId
+    })
+
+    // Check if user has a pending join request (if so, they can't report)
+    const hasPendingRequest = game.joinRequests?.some((request: any) => {
+      const requestUserId = request.userId?.toString() || request.userId || request.id
+      return requestUserId === currentUserId
+    })
+
+    // User can only report if they are a registered player or host, AND they don't have a pending request
+    return (isRegisteredPlayer || isHost) && !hasPendingRequest
+  }, [game, session?.user?.id])
 
   useEffect(() => {
     if (isOpen && user.id) {
@@ -134,6 +170,20 @@ export function PublicUserProfileModal({ user, isOpen, onClose }: PublicUserProf
                 <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{profileData.bio}</p>
               </div>
             )}
+
+            {/* Report Button - Only show in upcoming games */}
+            {canReport && (
+              <div className="pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReportModal(true)}
+                  className="w-full flex items-center gap-2"
+                >
+                  <Flag className="h-4 w-4" />
+                  Report User
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="text-center py-12">
@@ -141,6 +191,16 @@ export function PublicUserProfileModal({ user, isOpen, onClose }: PublicUserProf
           </div>
         )}
       </DialogContent>
+
+      {/* User Report Modal */}
+      {canReport && game && (
+        <UserReportModal
+          user={user}
+          game={game}
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
     </Dialog>
   )
 }

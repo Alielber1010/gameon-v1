@@ -10,7 +10,11 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "GameOn - Sports Team Matching",
   description: "Building sports communities, one match at a time",
-  generator: 'v0.app'
+  generator: 'v0.app',
+  icons: {
+    icon: '/images/Greenlogoicon.svg',
+    apple: '/images/Greenlogoicon.svg',
+  }
 }
 
 export default function RootLayout({
@@ -20,6 +24,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/images/Greenlogoicon.svg" type="image/svg+xml" />
+      </head>
       <body className={inter.className}>
         <Providers>
           {children}

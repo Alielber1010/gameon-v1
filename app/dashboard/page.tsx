@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { SearchBar } from "@/components/dashboard/search-bar"
 import { FilterModal } from "@/components/dashboard/filter-modal"
 import { GameGrid } from "@/components/dashboard/game-grid"
@@ -13,6 +13,7 @@ import { Plus, Loader2, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Game } from "@lib/db/models/types/game"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { useGames } from "@/hooks/use-games"
 
 // Transform API game data to frontend Game type
@@ -55,6 +56,7 @@ function transformApiGameToGame(apiGame: any): Game {
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   
   const [selectedGame, setSelectedGame] = useState<Game | null>(null)
   const [reportGame, setReportGame] = useState<Game | null>(null)
@@ -66,6 +68,16 @@ export default function DashboardPage() {
   const [city, setCity] = useState<string>("") // Extracted city for API filtering
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showFilterModal, setShowFilterModal] = useState(false)
+
+  // Check authentication - redirect to login if unauthenticated
+  // This works with NextAuth's SessionProvider which automatically detects
+  // logout events from other tabs via browser storage events
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login")
+      return
+    }
+  }, [status, router])
 
   // Extract city from location string (format: "City, Country" or just "City")
   const extractCityFromLocation = (locationStr: string): string => {

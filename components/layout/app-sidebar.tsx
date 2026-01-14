@@ -11,7 +11,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
-import { Home, Calendar, Bot, Bell, User, LogOut, History, Activity } from "lucide-react"
+import { Home, Calendar, Bot, Bell, User, LogOut, History, Activity, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -102,7 +103,21 @@ export function AppSidebar() {
   return (
     <Sidebar className="bg-green-600 text-white">
       <SidebarHeader className="p-4">
-        <Logo variant="full" theme="white" className="text-white" />
+        <div className="flex items-center justify-between w-full">
+          <Logo variant="full" theme="white" className="text-white" />
+          {/* Close button for mobile - visible only on mobile */}
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 min-h-[44px] min-w-[44px] text-white hover:bg-green-700 hover:text-white md:hidden touch-manipulation"
+              onClick={() => setOpenMobile(false)}
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="px-2">
@@ -172,7 +187,6 @@ export function AppSidebar() {
           </SidebarMenu>
         </div>
 
-        {/* Logout Button */}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
@@ -184,7 +198,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarFooter>
+      </SidebarFooter>  
     </Sidebar>
   )
 }

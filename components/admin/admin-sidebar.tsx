@@ -11,7 +11,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
-import { BarChart3, Flag, Users, LogOut, Gamepad2, FileText } from "lucide-react"
+import { BarChart3, Flag, Users, LogOut, Gamepad2, FileText, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -59,9 +60,23 @@ export function AdminSidebar() {
   return (
     <Sidebar className="bg-red-600 text-white">
       <SidebarHeader className="p-4">
-        <div className="flex items-center space-x-2">
-          <Logo variant="full" theme="white" className="text-white" />
-          <span className="text-xs bg-red-700 px-2 py-1 rounded">ADMIN</span>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center space-x-2">
+            <Logo variant="full" theme="white" className="text-white" />
+            <span className="text-xs bg-red-700 px-2 py-1 rounded">ADMIN</span>
+          </div>
+          {/* Close button for mobile - visible only on mobile */}
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 min-h-[44px] min-w-[44px] text-white hover:bg-red-700 hover:text-white md:hidden touch-manipulation"
+              onClick={() => setOpenMobile(false)}
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </SidebarHeader>
 

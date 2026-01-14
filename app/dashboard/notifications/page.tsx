@@ -72,10 +72,18 @@ export default function NotificationsPage() {
   const [markingAsRead, setMarkingAsRead] = useState(false)
 
   useEffect(() => {
+    // Check authentication - redirect to login if unauthenticated
+    // This works with NextAuth's SessionProvider which automatically detects
+    // logout events from other tabs via browser storage events
+    if (status === 'unauthenticated') {
+      router.push('/login')
+      return
+    }
+
     if (status === 'authenticated') {
       fetchNotifications()
     }
-  }, [status])
+  }, [status, router])
 
   const fetchNotifications = async () => {
     setLoading(true)
@@ -167,19 +175,6 @@ export default function NotificationsPage() {
     )
   }
 
-  if (status === 'unauthenticated') {
-    return (
-      <div className="flex-1 p-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <h1 className="text-2xl font-bold text-green-600">Notifications</h1>
-        </div>
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">Please login to view notifications</p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="flex-1 p-6 space-y-6">

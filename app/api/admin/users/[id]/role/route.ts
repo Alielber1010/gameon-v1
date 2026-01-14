@@ -32,7 +32,7 @@ export async function PUT(
 
     const { id } = params;
     const body = await request.json();
-    const { role, secretKey } = body;
+    const { role } = body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -49,23 +49,6 @@ export async function PUT(
       );
     }
 
-    // Require admin password for role changes
-    const ADMIN_PASSWORD = "t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2";
-
-    if (!secretKey) {
-      return NextResponse.json(
-        { success: false, error: 'Admin password is required to change user roles' },
-        { status: 400 }
-      );
-    }
-
-    if (secretKey !== ADMIN_PASSWORD) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid admin password' },
-        { status: 403 }
-      );
-    }
-
     // Find the user
     const user = await User.findById(id);
     
@@ -73,6 +56,15 @@ export async function PUT(
       return NextResponse.json(
         { success: false, error: 'User not found' },
         { status: 404 }
+      );
+    }
+
+    // Master admin protection
+    const MASTER_ADMIN_EMAIL = 'ali.melbermawy@gmail.com';
+    if (user.email === MASTER_ADMIN_EMAIL && role === 'user') {
+      return NextResponse.json(
+        { success: false, error: 'Cannot remove admin role from the master admin account' },
+        { status: 403 }
       );
     }
 

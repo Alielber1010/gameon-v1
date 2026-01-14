@@ -30,6 +30,8 @@ interface UsersTableProps {
 }
 
 export function UsersTable({ users, onUserClick }: UsersTableProps) {
+  const MASTER_ADMIN_EMAIL = 'ali.melbermawy@gmail.com'
+  
   const getRoleColor = (role: string) => {
     switch (role) {
       case "admin":
@@ -39,6 +41,10 @@ export function UsersTable({ users, onUserClick }: UsersTableProps) {
       default:
         return "bg-gray-100 text-gray-700"
     }
+  }
+  
+  const isMasterAdmin = (user: User) => {
+    return user.email === MASTER_ADMIN_EMAIL && user.role === 'admin'
   }
 
   const getInitials = (name: string) => {
@@ -78,18 +84,30 @@ export function UsersTable({ users, onUserClick }: UsersTableProps) {
                     <AvatarImage src={user.image} alt={user.name} />
                     <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                   </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{user.name}</span>
                       {user.isBanned && (
-                        <Badge className="bg-red-100 text-red-700 text-xs">
+                        <Badge className="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-md hover:bg-red-100 pointer-events-none">
                           BANNED
                         </Badge>
                       )}
                     </div>
-                    {user.location && (
-                      <div className="text-sm text-gray-500">{user.location}</div>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap mt-1">
+                      {isMasterAdmin(user) && (
+                        <Badge className="bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded-md hover:bg-red-600 pointer-events-none">
+                          MASTER
+                        </Badge>
+                      )}
+                      {user.role === 'admin' && !isMasterAdmin(user) && (
+                        <Badge className={`${getRoleColor(user.role)} text-xs px-2 py-0.5 font-medium rounded-md hover:bg-red-100 hover:text-red-700 pointer-events-none`}>
+                          ADMIN
+                        </Badge>
+                      )}
+                      {user.location && (
+                        <span className="text-sm text-gray-500">{user.location}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </TableCell>

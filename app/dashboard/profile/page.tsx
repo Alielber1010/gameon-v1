@@ -355,6 +355,11 @@ export default function ProfilePage() {
                   <Mail className="h-4 w-4" />
                   {profile.email}
                 </p>
+                {profile.role === 'admin' && (
+                  <span className="inline-block mt-2 px-4 py-1.5 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+                    Admin
+                  </span>
+                )}
               </div>
             </div>
           </CardContent>

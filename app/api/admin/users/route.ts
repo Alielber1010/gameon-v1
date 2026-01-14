@@ -34,9 +34,7 @@ export async function GET(request: NextRequest) {
     const showBanned = searchParams.get('showBanned'); // 'true', 'false', or null
 
     // Build query
-    const query: any = {
-      role: { $ne: 'admin' } // Exclude admin users from the list
-    };
+    const query: any = {}; // Include all users (including admins)
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },

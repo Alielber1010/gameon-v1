@@ -9,12 +9,6 @@ import { Logo } from "@/components/ui/logo"
 import ReactMarkdown from "react-markdown"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import { ChevronDown } from "lucide-react"
 
 interface PrivacyPolicySection {
   title: string
@@ -149,53 +143,6 @@ export default function PrivacyPolicyPage() {
           </div>
         </div>
 
-        {/* Mobile Table of Contents */}
-        {sections.length > 0 && (
-          <div className="lg:hidden mb-6">
-            <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-between bg-white hover:bg-gray-50 min-h-[44px]"
-                >
-                  <span className="font-medium">Table of Contents</span>
-                  <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <Card>
-                  <CardContent className="p-4">
-                    <nav className="space-y-1">
-                      {sections.map((section) => {
-                        const sectionId = `section-${section.order}`
-                        const isActive = activeSection === sectionId
-                        
-                        return (
-                          <button
-                            key={sectionId}
-                            onClick={() => {
-                              scrollToSection(sectionId)
-                            }}
-                            className={cn(
-                              "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
-                              "hover:bg-green-50 hover:text-green-700",
-                              isActive
-                                ? "bg-green-100 text-green-700 font-medium border-l-2 border-green-600"
-                                : "text-gray-600"
-                            )}
-                          >
-                            {section.title}
-                          </button>
-                        )
-                      })}
-                    </nav>
-                  </CardContent>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
-        )}
-
         {/* Privacy Policy Content */}
         <Card className="shadow-lg">
           <CardContent className="p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
@@ -208,6 +155,7 @@ export default function PrivacyPolicyPage() {
                 const IconComponent = iconMap[section.icon] || FileText
                 const isLocationSection = section.title.toLowerCase().includes('location')
                 const isThirdPartySection = section.title.toLowerCase().includes('third-party') || section.title.toLowerCase().includes('sharing')
+                
                 const sectionId = `section-${section.order}`
                 
                 return (
@@ -278,7 +226,7 @@ export default function PrivacyPolicyPage() {
         </Card>
           </div>
 
-          {/* Table of Contents Sidebar */}
+          {/* Navigation Sidebar */}
           {sections.length > 0 && (
             <aside className="hidden lg:block w-64 flex-shrink-0">
               <div className="sticky top-24">
@@ -298,7 +246,7 @@ export default function PrivacyPolicyPage() {
                               key={sectionId}
                               onClick={() => scrollToSection(sectionId)}
                               className={cn(
-                                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
+                                "w-full text-left px-3 py-2 rounded-md text-sm transition-colors min-h-[44px] sm:min-h-0",
                                 "hover:bg-green-50 hover:text-green-700",
                                 isActive
                                   ? "bg-green-100 text-green-700 font-medium border-l-2 border-green-600"

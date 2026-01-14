@@ -61,11 +61,21 @@ export async function POST(
       );
     }
 
-    // Prevent banning admin users
+    // Prevent banning admin users and master admin
+    const MASTER_ADMIN_EMAIL = 'ali.melbermawy@gmail.com';
+    
     if (user.role === 'admin') {
       console.log('[BanAPI] Attempted to ban admin user')
       return NextResponse.json(
         { success: false, error: 'Cannot ban admin users' },
+        { status: 403 }
+      );
+    }
+    
+    if (user.email === MASTER_ADMIN_EMAIL) {
+      console.log('[BanAPI] Attempted to ban master admin')
+      return NextResponse.json(
+        { success: false, error: 'Cannot ban the master admin account' },
         { status: 403 }
       );
     }

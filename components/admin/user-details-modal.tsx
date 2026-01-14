@@ -14,18 +14,6 @@ import type { User as UserType } from "./users-table"
 import { WarningNotificationForm } from "./warning-notification-form"
 import { BanUserModal } from "./ban-user-modal"
 import { BanSuccessModal } from "./ban-success-modal"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 
 interface Game {
   id: string
@@ -53,26 +41,20 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
   const [successBanState, setSuccessBanState] = useState(false)
   const [isUpdatingRole, setIsUpdatingRole] = useState(false)
   const [currentRole, setCurrentRole] = useState(user?.role || 'user')
-  const [showSecretDialog, setShowSecretDialog] = useState(false)
-  const [secretKey, setSecretKey] = useState("")
-  const [pendingRole, setPendingRole] = useState<string | null>(null)
 
   if (!user) return null
+
+  // Master admin protection
+  const MASTER_ADMIN_EMAIL = 'ali.melbermawy@gmail.com'
+  const isMasterAdmin = user.email === MASTER_ADMIN_EMAIL
 
   // Update current role when user changes
   useEffect(() => {
     setCurrentRole(user.role || 'user')
   }, [user.role])
 
-  const handleRoleChange = (newRole: string) => {
+  const handleRoleChange = async (newRole: string) => {
     if (newRole === currentRole) return
-    setPendingRole(newRole)
-    setSecretKey("")
-    setShowSecretDialog(true)
-  }
-
-  const confirmRoleChange = async () => {
-    if (!pendingRole) return
 
     setIsUpdatingRole(true)
     try {
@@ -81,16 +63,13 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ role: pendingRole, secretKey }),
+        body: JSON.stringify({ role: newRole }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setCurrentRole(pendingRole)
-        setShowSecretDialog(false)
-        setSecretKey("")
-        setPendingRole(null)
+        setCurrentRole(newRole)
         if (onUserUpdated) {
           onUserUpdated()
         }
@@ -185,31 +164,37 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-xl font-bold">{user.name}</h3>
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={currentRole}
-                    onValueChange={handleRoleChange}
-                    disabled={isUpdatingRole}
-                  >
-                    <SelectTrigger className="w-24 h-7">
-                      {isUpdatingRole ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <SelectValue>
-                          <Badge className={getRoleColor(currentRole)}>
-                            {currentRole.charAt(0).toUpperCase() + currentRole.slice(1)}
-                          </Badge>
-                        </SelectValue>
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">
-                        <span className="text-blue-700">User</span>
-                      </SelectItem>
-                      <SelectItem value="admin">
-                        <span className="text-red-700">Admin</span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isMasterAdmin ? (
+                    <Badge className={getRoleColor(currentRole)}>
+                      {currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} (Master)
+                    </Badge>
+                  ) : (
+                    <Select
+                      value={currentRole}
+                      onValueChange={handleRoleChange}
+                      disabled={isUpdatingRole}
+                    >
+                      <SelectTrigger className="w-24 h-7">
+                        {isUpdatingRole ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <SelectValue>
+                            <Badge className={getRoleColor(currentRole)}>
+                              {currentRole.charAt(0).toUpperCase() + currentRole.slice(1)}
+                            </Badge>
+                          </SelectValue>
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">
+                          <span className="text-blue-700">User</span>
+                        </SelectItem>
+                        <SelectItem value="admin">
+                          <span className="text-red-700">Admin</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 {user.isBanned && (
                   <Badge className="bg-red-100 text-red-700">
@@ -242,49 +227,59 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
                   <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  variant="outline"
-                  className="border-orange-600 text-orange-600 hover:bg-orange-50"
-                  onClick={() => setShowWarningForm(true)}
-                  disabled={user.isBanned}
-                >
-                  <AlertTriangle className="mr-2 h-4 w-4" />
-                  Send Warning
-                </Button>
-                
-                {/* Toggle Ban Button */}
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700">Account Status:</span>
-                  <button
-                    onClick={handleBanToggle}
-                    disabled={isToggling}
-                    className={`
-                      relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2
-                      ${user.isBanned 
-                        ? 'bg-red-600 focus:ring-red-500' 
-                        : 'bg-green-600 focus:ring-green-500'
-                      }
-                      ${isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                    `}
-                  >
-                    <span
-                      className={`
-                        inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-200 ease-in-out flex items-center justify-center
-                        ${user.isBanned ? 'translate-x-1' : 'translate-x-9'}
-                      `}
+              <div className="mt-4 flex flex-col sm:flex-row gap-4">
+                {!isMasterAdmin && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="border-orange-600 text-orange-600 hover:bg-orange-50 min-h-[44px] sm:min-h-0"
+                      onClick={() => setShowWarningForm(true)}
+                      disabled={user.isBanned}
                     >
-                      {user.isBanned ? (
-                        <Ban className="h-3 w-3 text-red-600" />
-                      ) : (
-                        <ShieldCheck className="h-3 w-3 text-green-600" />
-                      )}
-                    </span>
-                  </button>
-                  <span className={`text-sm font-medium ${user.isBanned ? 'text-red-600' : 'text-green-600'}`}>
-                    {user.isBanned ? 'Banned' : 'Allowed'}
-                  </span>
-                </div>
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Send Warning
+                    </Button>
+                    
+                    {/* Toggle Ban Button */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Account Status:</span>
+                      <button
+                        onClick={handleBanToggle}
+                        disabled={isToggling}
+                        className={`
+                          relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 min-h-[44px] min-w-[64px] sm:min-h-0 sm:min-w-0
+                          ${user.isBanned 
+                            ? 'bg-red-600 focus:ring-red-500' 
+                            : 'bg-green-600 focus:ring-green-500'
+                          }
+                          ${isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                        `}
+                      >
+                        <span
+                          className={`
+                            inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-200 ease-in-out flex items-center justify-center
+                            ${user.isBanned ? 'translate-x-1' : 'translate-x-9'}
+                          `}
+                        >
+                          {user.isBanned ? (
+                            <Ban className="h-3 w-3 text-red-600" />
+                          ) : (
+                            <ShieldCheck className="h-3 w-3 text-green-600" />
+                          )}
+                        </span>
+                      </button>
+                      <span className={`text-sm font-medium whitespace-nowrap ${user.isBanned ? 'text-red-600' : 'text-green-600'}`}>
+                        {user.isBanned ? 'Banned' : 'Allowed'}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {isMasterAdmin && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                    <Shield className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-800">Master Admin Account (Protected)</span>
+                  </div>
+                )}
               </div>
               {user.isBanned && (
                 <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -447,68 +442,6 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
         onClose={() => setShowSuccessModal(false)}
         wasBanned={successBanState}
       />
-
-      {/* Secret Key Dialog for Role Change */}
-      <AlertDialog open={showSecretDialog} onOpenChange={setShowSecretDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Role Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              Changing user role requires the admin password. Enter the admin password to proceed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="secretKey">Admin Password</Label>
-              <Input
-                id="secretKey"
-                type="password"
-                value={secretKey}
-                onChange={(e) => setSecretKey(e.target.value)}
-                placeholder="Enter admin password"
-                className="min-h-[44px] sm:min-h-0"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && secretKey) {
-                    confirmRoleChange()
-                  }
-                }}
-              />
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-              <p className="text-sm text-yellow-800">
-                <strong>Changing role from:</strong> {currentRole} → <strong>{pendingRole}</strong>
-              </p>
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setShowSecretDialog(false)
-                setSecretKey("")
-                setPendingRole(null)
-                setCurrentRole(user.role || 'user')
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmRoleChange}
-              disabled={!secretKey || isUpdatingRole}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isUpdatingRole ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Updating...
-                </>
-              ) : (
-                'Confirm Change'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Dialog>
   )
 }

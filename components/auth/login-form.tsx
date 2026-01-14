@@ -84,7 +84,7 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError("");
-    // Redirect to dashboard - middleware will redirect admins to /admin/dashboard automatically
+    // Redirect to dashboard - middleware will redirect admins to /admin automatically
     await signIn("google", { callbackUrl: "/dashboard" });
   };
 
@@ -100,13 +100,6 @@ export function LoginForm() {
       
       if (!checkUserData.exists) {
         setError("This account doesn't exist. Please check your email or sign up for a new account.");
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if account was created with Google OAuth
-      if (checkUserData.isGoogleAccount || checkUserData.provider === 'google') {
-        setError("This account was created using Google sign-in. Please use the 'Continue with Google' button above to sign in.");
         setIsLoading(false);
         return;
       }
@@ -161,7 +154,7 @@ export function LoginForm() {
       try {
         const session = await fetch("/api/auth/session").then(res => res.json());
         if (session?.user?.role === "admin") {
-          router.push("/admin/dashboard");
+          router.push("/admin");
         } else {
           router.push("/dashboard");
         }
@@ -259,14 +252,9 @@ export function LoginForm() {
           </div>
 
           {error && (
-            <Alert 
-              variant={error.includes("Google sign-in") ? "default" : "destructive"}
-              className={error.includes("Google sign-in") ? "bg-blue-50 border-blue-200 text-blue-800" : ""}
-            >
+            <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription className={error.includes("Google sign-in") ? "text-blue-800" : ""}>
-                {error}
-              </AlertDescription>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 

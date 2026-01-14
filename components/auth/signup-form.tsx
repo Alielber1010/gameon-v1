@@ -74,18 +74,7 @@ export function SignUpForm() {
         setGeneralError("Sign up successful, but automatic sign in failed. Please sign in manually.");
         setIsLoading(false);
       } else if (signInResult?.ok) {
-        // Check if user is admin and redirect accordingly
-        try {
-          const session = await fetch("/api/auth/session").then(res => res.json());
-          if (session?.user?.role === "admin") {
-            router.push("/admin/dashboard");
-          } else {
-            router.push("/dashboard");
-          }
-        } catch (error) {
-          // Fallback to dashboard if session check fails
-          router.push("/dashboard");
-        }
+        router.push("/dashboard");
       }
 
     } catch (error) {

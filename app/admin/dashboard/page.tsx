@@ -20,6 +20,7 @@ import {
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import { 
   LineChart, 
   Line, 
@@ -203,9 +204,12 @@ export default function AdminDashboardPage() {
   return (
     <div className="flex-1 p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Real-time platform analytics and insights</p>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Real-time platform analytics and insights</p>
+          </div>
         </div>
         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
           System Healthy

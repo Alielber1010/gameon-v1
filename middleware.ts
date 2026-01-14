@@ -6,6 +6,16 @@ export default withAuth(
     const token = req.nextauth.token
     const isAdmin = token?.role === "admin"
     const isAdminRoute = req.nextUrl.pathname.startsWith("/admin")
+    const isLoginRoute = req.nextUrl.pathname === "/login"
+
+    // If authenticated user visits login page, redirect to appropriate dashboard
+    if (isLoginRoute && token) {
+      if (isAdmin) {
+        return NextResponse.redirect(new URL("/admin/dashboard", req.url))
+      } else {
+        return NextResponse.redirect(new URL("/dashboard", req.url))
+      }
+    }
 
     // If user is trying to access admin route but is not admin, redirect to dashboard
     if (isAdminRoute && !isAdmin) {
@@ -22,7 +32,11 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Allow access if user is authenticated
+        // For login route, allow access even if not authenticated (so unauthenticated users can access it)
+        if (req.nextUrl.pathname === "/login") {
+          return true
+        }
+        // For other routes, require authentication
         return !!token
       },
     },
@@ -30,9 +44,10 @@ export default withAuth(
 )
 
 export const config = { 
-  // Protect dashboard and admin routes
+  // Protect dashboard and admin routes, and handle login redirect
   matcher: [
     "/dashboard/:path*",
-    "/admin/:path*"
+    "/admin/:path*",
+    "/login"
   ] 
 }

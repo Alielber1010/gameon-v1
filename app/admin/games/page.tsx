@@ -16,6 +16,7 @@ import { GameDetailsModal } from "@/components/admin/game-details-modal"
 import { Gamepad2, Search, Loader2 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 function AdminGamesContent() {
   const { data: session, status: sessionStatus } = useSession()
@@ -143,9 +144,12 @@ function AdminGamesContent() {
   return (
     <div className="flex-1 p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Games Management</h1>
-          <p className="text-gray-600 mt-1">View all games and their report counts</p>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Games Management</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">View all games and their report counts</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Gamepad2 className="h-5 w-5 text-red-600" />

@@ -11,11 +11,80 @@ export async function POST(req: Request) {
   }
 
   await connectDB();
+  const lowerEmail = email.toLowerCase().trim();
+  
+  // Helper function to normalize Gmail emails (remove dots from local part)
+  const normalizeGmailEmail = (email: string) => {
+    if (email.includes('@gmail.com')) {
+      const [local, domain] = email.split('@');
+      return local.replace(/\./g, '') + '@' + domain;
+    }
+    return email;
+  };
 
-  // Case-insensitive email check
-  const exists = await User.findOne({ email: email.toLowerCase() });
-  if (exists) {
-    return NextResponse.json({ error: "Email is already in use" }, { status: 409 });
+  const mongoose = await connectDB();
+  const db = mongoose.connection.db;
+  
+  // 1. Check our User model
+  let existingUser = await User.findOne({ email: lowerEmail }).select('+password provider');
+  
+  // For Gmail, also try normalized version
+  if (!existingUser && lowerEmail.includes('@gmail.com')) {
+    const normalizedEmail = normalizeGmailEmail(lowerEmail);
+    existingUser = await User.findOne({ email: normalizedEmail }).select('+password provider');
+  }
+  
+  // 2. Check NextAuth's users collection
+  const nextAuthUsersCollection = db.collection('users');
+  let nextAuthUser = await nextAuthUsersCollection.findOne({ email: lowerEmail });
+  
+  // For Gmail, also try normalized version
+  if (!nextAuthUser && lowerEmail.includes('@gmail.com')) {
+    const normalizedEmail = normalizeGmailEmail(lowerEmail);
+    nextAuthUser = await nextAuthUsersCollection.findOne({ email: normalizedEmail });
+  }
+
+  // 3. Check if there's a Google account linked
+  let hasGoogleAccount = false;
+  if (nextAuthUser) {
+    try {
+      const accountsCollection = db.collection('accounts');
+      const linkedAccount = await accountsCollection.findOne({ 
+        userId: nextAuthUser._id,
+        provider: 'google'
+      });
+      hasGoogleAccount = !!linkedAccount;
+    } catch (err) {
+      console.error('[signup] Error checking accounts:', err);
+    }
+  }
+
+  // Check if account exists
+  const accountExists = !!(existingUser || nextAuthUser);
+  
+  if (accountExists) {
+    // Determine if it's a Google account
+    const isGoogleAccount = hasGoogleAccount || 
+                           (existingUser && existingUser.provider === 'google') || 
+                           (!existingUser && nextAuthUser);
+    
+    if (isGoogleAccount) {
+      return NextResponse.json({ 
+        error: "An account with this email already exists. It was created with Google. Please sign in using Google or use a different email address." 
+      }, { status: 409 });
+    }
+    
+    // Block if a credentials account already exists
+    if (existingUser && existingUser.provider === "credentials") {
+      return NextResponse.json({ 
+        error: "An account with this email already exists. Please sign in instead." 
+      }, { status: 409 });
+    }
+    
+    // Account exists but type unknown
+    return NextResponse.json({ 
+      error: "An account with this email already exists. Please sign in instead." 
+    }, { status: 409 });
   }
 
   try {
@@ -26,7 +95,7 @@ export async function POST(req: Request) {
       firstName,
       lastName,
       name: fullName,
-      email: email.toLowerCase(),
+      email: lowerEmail,
       password,
       provider: "credentials",
     });

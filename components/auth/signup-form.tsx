@@ -1,8 +1,8 @@
 //C:\gameon-v1\components\auth\signup-form.tsx
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import Link from 'next/link';
 
 export function SignUpForm() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [fieldError, setFieldError] = useState({ email: "", password: "" });
@@ -23,6 +24,14 @@ export function SignUpForm() {
   const [passwordValue, setPasswordValue] = useState('');
   const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
 
+  // Clear existing session when user navigates to signup page
+  useEffect(() => {
+    // If user is already logged in, sign them out to allow new signup
+    if (session) {
+      signOut({ redirect: false }).catch(console.error);
+    }
+  }, [session]); // Run when session changes
+
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,22 +39,55 @@ export function SignUpForm() {
     setFieldError({ email: "", password: "" });
     setGeneralError("");
 
-    const form = e.target as HTMLFormElement;
-    const firstName = (form.elements.namedItem("firstName") as HTMLInputElement).value.trim();
-    const lastName = (form.elements.namedItem("lastName") as HTMLInputElement).value.trim();
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
-    // Use state values instead of accessing form elements directly for password checks
-    const password = passwordValue;
-    const confirm = confirmPasswordValue;
-
-
-    if (password !== confirm) {
-      setFieldError({ ...fieldError, password: "Passwords do not match" });
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      // Sign out any existing session first to ensure clean state
+      if (session) {
+        await signOut({ redirect: false });
+        // Small delay to ensure session is cleared
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      const form = e.target as HTMLFormElement;
+      const firstName = (form.elements.namedItem("firstName") as HTMLInputElement).value.trim();
+      const lastName = (form.elements.namedItem("lastName") as HTMLInputElement).value.trim();
+      const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
+      // Use state values instead of accessing form elements directly for password checks
+      const password = passwordValue;
+      const confirm = confirmPasswordValue;
+
+      if (password !== confirm) {
+        setFieldError({ ...fieldError, password: "Passwords do not match" });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if account already exists (including Google accounts)
+      try {
+        const checkUserResponse = await fetch(`/api/users/check-email?email=${encodeURIComponent(email)}`);
+        const checkUserData = await checkUserResponse.json();
+        
+        if (checkUserData.exists) {
+          // Check if account was created with Google (provider is 'google' OR has no password)
+          const isGoogleAccount = checkUserData.provider === 'google' || !checkUserData.hasPassword;
+          if (isGoogleAccount) {
+            setFieldError({ 
+              ...fieldError, 
+              email: "An account with this email already exists. It was created with Google. Please sign in using the 'Continue with Google' button or use a different email address." 
+            });
+          } else {
+            setFieldError({ 
+              ...fieldError, 
+              email: "An account with this email already exists. Please sign in instead." 
+            });
+          }
+          setIsLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking email:', err);
+        // Continue with signup if check fails
+      }
+
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -55,14 +97,17 @@ export function SignUpForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.error?.toLowerCase().includes("email")) {
+        if (data.error?.toLowerCase().includes("email") || data.error?.toLowerCase().includes("account")) {
           setFieldError({ ...fieldError, email: data.error });
         } else {
-          setGeneralError("An unexpected error occurred during signup.");
+          setGeneralError(data.error || "An unexpected error occurred during signup.");
         }
         setIsLoading(false);
         return;
       }
+
+      // Wait a moment for user to be created
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const signInResult = await signIn("credentials", { 
         email, 
@@ -74,7 +119,26 @@ export function SignUpForm() {
         setGeneralError("Sign up successful, but automatic sign in failed. Please sign in manually.");
         setIsLoading(false);
       } else if (signInResult?.ok) {
-        router.push("/dashboard");
+        // Wait a moment for session to be created
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Fetch session to check role and redirect accordingly
+        try {
+          const sessionResponse = await fetch("/api/auth/session");
+          const sessionData = await sessionResponse.json();
+          if (sessionData?.user?.role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push("/dashboard");
+          }
+        } catch (error) {
+          console.error('Error fetching session:', error);
+          // Fallback to dashboard if session check fails
+          router.push("/dashboard");
+        }
+      } else {
+        setGeneralError("Sign up successful, but automatic sign in failed. Please sign in manually.");
+        setIsLoading(false);
       }
 
     } catch (error) {
@@ -83,12 +147,18 @@ export function SignUpForm() {
     }
   };
   
-  // ... (handleGoogleSignIn function remains the same)
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
+      // Sign out any existing session first to ensure clean state
+      if (session) {
+        await signOut({ redirect: false });
+        // Small delay to ensure session is cleared
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
       await signIn("google", { callbackUrl: "/dashboard" });
-    } catch {
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
       setIsGoogleLoading(false);
     }
   };

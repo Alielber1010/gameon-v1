@@ -3,7 +3,7 @@
 import "@/lib/force-ipv4"
 
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { Providers } from "@/components/session-provider" // Import the provider
 import "./globals.css"
@@ -18,11 +18,12 @@ export const metadata: Metadata = {
     icon: '/images/Greenlogoicon.svg',
     apple: '/images/Greenlogoicon.svg',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
-  }
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 }
 
 export default function RootLayout({

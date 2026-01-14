@@ -11,6 +11,7 @@ import { UserDetailsModal } from "@/components/admin/user-details-modal"
 import { Users, Search, Loader2, Ban } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 interface Game {
   id: string
@@ -184,9 +185,12 @@ export default function AdminUsersPage() {
   return (
     <div className="flex-1 p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
-          <p className="text-gray-600 mt-1">View and manage all platform users</p>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Users Management</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">View and manage all platform users</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-red-600" />

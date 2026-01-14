@@ -17,6 +17,7 @@ import { ReportDetailsModal } from "@/components/admin/report-details-modal"
 import { Flag, Search, Loader2, Gamepad2, User, Circle } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export default function AdminReportsPage() {
   const { data: session, status: sessionStatus } = useSession()
@@ -119,9 +120,12 @@ export default function AdminReportsPage() {
   return (
     <div className="flex-1 p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports Management</h1>
-          <p className="text-gray-600 mt-1">View and manage all reports about games and users</p>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Reports Management</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">View and manage all reports about games and users</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Flag className="h-5 w-5 text-red-600" />

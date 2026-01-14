@@ -1,7 +1,7 @@
 // components/auth/login-form.tsx
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import Link from "next/link";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -84,84 +85,121 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError("");
-    // Redirect to dashboard - middleware will redirect admins to /admin automatically
-    await signIn("google", { callbackUrl: "/dashboard" });
+    setMode("google");
+    
+    try {
+      // Dispose existing session ONLY when logging in (as per requirements)
+      if (session) {
+        await signOut({ redirect: false });
+        // Wait to ensure session is cleared before new login
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      // Redirect to dashboard - middleware will redirect admins to /admin automatically
+      await signIn("google", { 
+        callbackUrl: "/dashboard",
+        redirect: true 
+      });
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+      setError("Failed to sign in with Google. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    setMode("email");
 
-    // First check if the account exists
     try {
-      const checkUserResponse = await fetch(`/api/users/check-email?email=${encodeURIComponent(email)}`);
-      const checkUserData = await checkUserResponse.json();
-      
-      if (!checkUserData.exists) {
-        setError("This account doesn't exist. Please check your email or sign up for a new account.");
-        setIsLoading(false);
-        return;
+      // Dispose existing session ONLY when logging in (as per requirements)
+      if (session) {
+        await signOut({ redirect: false });
+        // Wait to ensure session is cleared before new login
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      // Check if user is banned before attempting login
-      if (checkUserData.isBanned) {
-        const banResponse = await fetch(`/api/users/ban-info?email=${encodeURIComponent(email)}`);
-        const banData = await banResponse.json();
-        if (banData.success && banData.banReason) {
-          setBanReason(banData.banReason);
-          setShowBanModal(true);
-          setError("");
-          setIsLoading(false);
-          return;
-        }
-      }
-    } catch (err) {
-      console.error('Error checking user:', err);
-      // Continue with login attempt if check fails
-    }
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    if (result?.error) {
-      // Check if user is banned when there's an error
-      if (email) {
+      if (result?.error) {
+        // On failed credentials sign-in, use check-email to pick the right message
+        // (avoids blocking valid sign-ins when check-email is stale/wrong)
         try {
-          const banResponse = await fetch(`/api/users/ban-info?email=${encodeURIComponent(email)}`);
-          const banData = await banResponse.json();
-          if (banData.success && banData.banReason) {
-            // User is banned, show ban modal
-            setBanReason(banData.banReason);
-            setShowBanModal(true);
-            setError("");
-            setIsLoading(false);
-            return;
+          const checkUserResponse = await fetch(
+            `/api/users/check-email?email=${encodeURIComponent(email)}`,
+            { cache: "no-store" }
+          );
+          const checkUserData = await checkUserResponse.json();
+
+          if (checkUserData?.success) {
+            // Check for banned account
+            if (checkUserData.isBanned) {
+              try {
+                const banResponse = await fetch(
+                  `/api/users/ban-info?email=${encodeURIComponent(email)}`,
+                  { cache: "no-store" }
+                );
+                const banData = await banResponse.json();
+                setBanReason(
+                  banData.success && banData.banReason
+                    ? banData.banReason
+                    : "Your account has been permanently banned for violating the GameOn policies."
+                );
+              } catch {
+                setBanReason("Your account has been permanently banned for violating the GameOn policies.");
+              }
+              setShowBanModal(true);
+              setError("");
+              setIsLoading(false);
+              return;
+            }
+
+            // Check if account was created with Google
+            const isGoogleAccount = checkUserData.provider === 'google' || 
+                                   (checkUserData.exists && !checkUserData.hasPassword);
+            
+            if (isGoogleAccount) {
+              setError("An account with this email already exists and was created with Google. Please sign in using the 'Continue with Google' button above, or use a different email address.");
+              setIsLoading(false);
+              return;
+            }
+
+            // Check if account doesn't exist
+            if (!checkUserData.exists) {
+              setError("This account doesn't exist. Please check your email or sign up for a new account.");
+              setIsLoading(false);
+              return;
+            }
           }
         } catch (err) {
-          console.error('Error checking ban status:', err);
+          console.error("Error checking account after failed sign-in:", err);
         }
+
+        // Default: wrong password (or unable to disambiguate)
+        setError("Incorrect password. Please try again.");
+        setIsLoading(false);
+      } else if (result?.ok) {
+        // Login successful
+        setIsLoading(false);
+        
+        // Redirect to dashboard - middleware will automatically redirect admins to /admin/dashboard
+        // Use window.location for reliable redirect that ensures session is loaded
+        window.location.href = "/dashboard";
+      } else {
+        // Unknown error - result is neither error nor ok
+        setError("An error occurred during sign in. Please try again.");
+        setIsLoading(false);
       }
-      
-      // Account exists but password is wrong
-      setError("Incorrect password. Please try again.");
+    } catch (error) {
+      console.error('Error in email sign in:', error);
+      setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
-    } else if (result?.ok) {
-      // Fetch session to check role and redirect accordingly
-      try {
-        const session = await fetch("/api/auth/session").then(res => res.json());
-        if (session?.user?.role === "admin") {
-          router.push("/admin");
-        } else {
-          router.push("/dashboard");
-        }
-      } catch (error) {
-        // Fallback to dashboard if session check fails
-        router.push("/dashboard");
-      }
     }
   };
 

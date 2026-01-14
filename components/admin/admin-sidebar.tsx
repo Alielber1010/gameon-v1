@@ -91,24 +91,11 @@ export function AdminSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
-              asChild 
               className="text-white hover:bg-red-700"
-              onClick={() => {
-                console.log('[AdminSidebar] Logout button clicked on SidebarMenuButton');
-                handleLogout();
-              }}
+              onClick={handleLogout}
             >
-              <button 
-                className="w-full flex items-center gap-2"
-                onClick={(e) => {
-                  console.log('[AdminSidebar] Logout button clicked on inner button', e);
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </button>
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

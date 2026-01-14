@@ -20,6 +20,12 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       allowDangerousEmailAccountLinking: true, // Allow linking accounts with same email
+      authorization: {
+        params: {
+          prompt: "select_account", // Force account selection, prevents auto-login
+          access_type: "offline",
+        },
+      },
     }),
 
     CredentialsProvider({
@@ -82,30 +88,73 @@ export const authOptions: NextAuthOptions = {
         
         const existingUser = await User.findOne({ email: user.email.toLowerCase() })
         
-        // If user exists with credentials provider, allow linking by returning true
-        // The MongoDBAdapter will handle creating the OAuth account link
+        // Update or create user with provider field set to "google"
         if (existingUser) {
+          // Update existing user to mark as Google provider if not already set
+          if (existingUser.provider !== "google") {
+            await User.updateOne(
+              { email: user.email.toLowerCase() },
+              { $set: { provider: "google" } }
+            )
+          }
           // User exists - allow sign in (NextAuth will link accounts)
           return true
+        } else {
+          // New user - MongoDBAdapter will create the user, but we need to ensure provider is set
+          // We'll handle this in the jwt callback after user is created
+          return true
         }
-        
-        // New user - allow sign in
-        return true
       }
 
       return true
     },
 
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
       // On initial sign in, set user data
       if (user) {
         token.id = user.id
         token.role = (user as any).role || "user"
+        token.email = user.email
       }
       
-      // For OAuth users (Google), fetch role from database
-      // This runs on initial sign-in and subsequent token refreshes
-      if (token.email && (!token.role || account?.provider === "google")) {
+      // If this is a new sign-in (not a token refresh), ensure we have the latest user data
+      if (account || trigger === "signIn") {
+        await connectDB()
+        const email = token.email || user?.email
+        if (email) {
+          const dbUser = await User.findOne({ email: email.toLowerCase() })
+          if (dbUser) {
+            token.role = dbUser.role || "user"
+            token.id = dbUser._id.toString()
+            // Update email to ensure consistency
+            token.email = dbUser.email
+            
+            // If this is a Google sign-in, ensure provider is set
+            if (account?.provider === "google") {
+              if (dbUser.provider !== "google") {
+                await User.updateOne(
+                  { email: email.toLowerCase() },
+                  { $set: { provider: "google" } }
+                )
+              }
+            }
+          } else if (account?.provider === "google" && email) {
+            // New Google user - MongoDBAdapter created it, but we need to ensure provider is set
+            // Try to find and update after a short delay (MongoDBAdapter might still be creating)
+            setTimeout(async () => {
+              await connectDB()
+              await User.updateOne(
+                { email: email.toLowerCase() },
+                { $set: { provider: "google" } },
+                { upsert: false }
+              )
+            }, 100)
+          }
+        }
+      }
+      
+      // For token refreshes, ensure we have the latest role from database
+      if (token.email && !account && trigger !== "signIn") {
         await connectDB()
         const dbUser = await User.findOne({ email: token.email.toLowerCase() })
         if (dbUser) {
@@ -127,10 +176,17 @@ export const authOptions: NextAuthOptions = {
 
     async redirect({ url, baseUrl }) {
       // If url is a relative path, make it absolute
-      if (url.startsWith("/")) return `${baseUrl}${url}`
+      if (url.startsWith("/")) {
+        // Check if user is admin and redirecting to dashboard - redirect to admin instead
+        if (url === "/dashboard" || url.startsWith("/dashboard")) {
+          // We can't check role here, so let middleware handle the redirect
+          return `${baseUrl}${url}`
+        }
+        return `${baseUrl}${url}`
+      }
       // If url is on the same origin, allow it
       if (new URL(url).origin === baseUrl) return url
-      // Default to dashboard for authenticated users
+      // Default to dashboard for authenticated users (middleware will redirect admins)
       return `${baseUrl}/dashboard`
     },
   },

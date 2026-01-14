@@ -162,20 +162,20 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
     }
   }, [showLocationSuggestions])
   return (
-    <div className="flex flex-col md:flex-row gap-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       <div className="relative flex-1">
         <Input
           placeholder="SEARCH GAMES ..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 h-12 text-lg bg-gray-200 border-0 rounded-full placeholder:text-gray-500 text-gray-800 font-medium"
+          className="pl-10 h-12 sm:h-12 text-base sm:text-lg bg-gray-200 border-0 rounded-full placeholder:text-gray-500 text-gray-800 font-medium"
         />
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
       </div>
 
-      <div className="flex items-center gap-2 bg-gray-200 rounded-full px-4 py-2 min-w-fit relative" ref={locationInputRef}>
-        <MapPin className="h-5 w-5 text-gray-600" />
-        <div className="relative flex-1">
+      <div className="flex items-center gap-2 bg-gray-200 rounded-full px-3 sm:px-4 py-2 min-w-fit relative" ref={locationInputRef}>
+        <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 flex-shrink-0" />
+        <div className="relative flex-1 min-w-0">
           <Input
             value={location}
             onChange={(e) => handleLocationInputChange(e.target.value)}
@@ -184,7 +184,7 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
                 setShowLocationSuggestions(true)
               }
             }}
-            className="border-0 bg-transparent text-gray-800 font-medium min-w-[150px]"
+            className="border-0 bg-transparent text-gray-800 font-medium text-sm sm:text-base min-w-0"
             placeholder="Everywhere"
           />
           {isSearchingLocation && (
@@ -197,9 +197,9 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
                   key={index}
                   type="button"
                   onClick={() => handleLocationSelect(suggestion)}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors"
+                  className="w-full text-left px-4 py-3 sm:py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors min-h-[44px] touch-manipulation"
                 >
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-gray-900 text-sm sm:text-base">
                     {suggestion.city || suggestion.displayName.split(',')[0]}
                   </div>
                   <div className="text-xs text-gray-500 truncate">
@@ -213,14 +213,14 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
         <Button 
           variant="ghost" 
           size="sm" 
-          className="text-gray-700 font-medium hover:bg-gray-300"
+          className="text-gray-700 font-medium hover:bg-gray-300 min-h-[44px] px-3 sm:px-4 flex-shrink-0"
           onClick={handleGetCurrentLocation}
           disabled={isGettingLocation}
         >
           {isGettingLocation ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            "Location"
+            <span className="text-xs sm:text-sm">Location</span>
           )}
         </Button>
       </div>

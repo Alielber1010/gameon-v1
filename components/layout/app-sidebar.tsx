@@ -145,6 +145,12 @@ export function AppSidebar() {
                         width={20}
                         height={20}
                         className="object-cover w-full h-full"
+                        unoptimized={session.user.image?.includes('blob.vercel-storage.com') || session.user.image?.startsWith('http')}
+                        onError={(e) => {
+                          // Fallback to placeholder on error
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/placeholder-user.jpg';
+                        }}
                       />
                     </div>
                   ) : (

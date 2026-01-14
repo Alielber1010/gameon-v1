@@ -59,8 +59,12 @@ export async function POST(request: NextRequest) {
     const extension = file.name.split('.').pop() || 'jpg';
     const filename = `profiles/profile-${authResult.id}-${timestamp}-${randomString}.${extension}`;
 
+    // Convert File to Buffer for Vercel Blob
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
     // Upload to Vercel Blob Storage
-    const blob = await put(filename, file, {
+    const blob = await put(filename, buffer, {
       access: 'public',
       contentType: file.type,
     });
@@ -71,8 +75,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error uploading profile image:', error);
+    // Provide more detailed error message
+    const errorMessage = error.message || 'Failed to upload image';
     return NextResponse.json(
-      { success: false, error: 'Failed to upload image' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

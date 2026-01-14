@@ -150,14 +150,14 @@ export default function DashboardPage() {
   }, [games, searchQuery, selectedSports, selectedSkillLevels, selectedTimings])
 
   return (
-    <div className="flex-1 p-6 space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex items-center gap-2 sm:gap-4">
         <SidebarTrigger />
-        <h1 className="text-2xl font-bold">Find Your Game</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Find Your Game</h1>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+        <div className="flex-1 w-full">
           <SearchBar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -169,10 +169,11 @@ export default function DashboardPage() {
         <Button
           onClick={() => setShowFilterModal(true)}
           variant="outline"
-          className="flex items-center gap-2 h-12 px-6 border-2 border-green-600 text-green-600 hover:bg-green-50"
+          className="flex items-center justify-center gap-2 h-12 px-4 sm:px-6 border-2 border-green-600 text-green-600 hover:bg-green-50 w-full sm:w-auto min-h-[44px]"
         >
           <Filter className="h-5 w-5" />
-          Filters
+          <span className="hidden sm:inline">Filters</span>
+          <span className="sm:hidden">Filter</span>
           {(selectedSports.length > 0 || selectedSkillLevels.length > 0 || selectedTimings.length > 0) && (
             <span className="ml-1 bg-green-600 text-white rounded-full px-2 py-0.5 text-xs font-semibold">
               {selectedSports.length + selectedSkillLevels.length + selectedTimings.length}
@@ -182,19 +183,19 @@ export default function DashboardPage() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-          <span className="ml-2 text-gray-600">Loading games...</span>
+        <div className="flex items-center justify-center py-8 sm:py-12">
+          <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-green-600" />
+          <span className="ml-2 text-sm sm:text-base text-gray-600">Loading games...</span>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm sm:text-base">
           <p className="font-semibold">Error loading games</p>
-          <p className="text-sm">{error}</p>
+          <p className="text-sm mt-1">{error}</p>
           <button
             onClick={() => refetch()}
-            className="mt-2 text-sm underline hover:no-underline"
+            className="mt-2 text-sm underline hover:no-underline min-h-[44px] px-4"
           >
             Try again
           </button>
@@ -204,8 +205,8 @@ export default function DashboardPage() {
       {!loading && !error && (
         <>
           {filteredGames.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">No games found</p>
+            <div className="text-center py-8 sm:py-12">
+              <p className="text-gray-600 text-base sm:text-lg">No games found</p>
               <p className="text-gray-500 text-sm mt-2">
                 {games.length === 0 
                   ? "Be the first to create a game!" 
@@ -254,9 +255,10 @@ export default function DashboardPage() {
       {/* Floating Action Button */}
       <button
         onClick={() => setShowCreateModal(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 z-50"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-14 h-14 sm:w-16 sm:h-16 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 z-50 touch-manipulation"
+        aria-label="Create new game"
       >
-        <Plus className="h-6 w-6" />
+        <Plus className="h-6 w-6 sm:h-7 sm:w-7" />
       </button>
 
       {/* Create Game Modal */}

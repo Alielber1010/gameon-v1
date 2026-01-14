@@ -133,18 +133,18 @@ export function SignUpForm() {
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               name="firstName"
               placeholder="First Name"
               required
-              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md"
+              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md min-h-[44px] sm:min-h-0"
             />
             <Input
               name="lastName"
               placeholder="Last Name"
               required
-              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md"
+              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md min-h-[44px] sm:min-h-0"
             />
           </div>
 
@@ -154,7 +154,7 @@ export function SignUpForm() {
               type="email"
               placeholder="Email Address"
               required
-              className={`border ${fieldError.email ? "border-red-500" : "border-gray-300"} focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md`}
+              className={`border ${fieldError.email ? "border-red-500" : "border-gray-300"} focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md min-h-[44px] sm:min-h-0`}
             />
             {fieldError.email && <p className="text-red-500 text-sm mt-1">{fieldError.email}</p>}
           </div>
@@ -169,7 +169,7 @@ export function SignUpForm() {
               value={passwordValue}
               onChange={(e) => setPasswordValue(e.target.value)}
               // Ensure ample padding on the right for the icon
-              className={`border ${fieldError.password ? "border-red-500" : "border-gray-300"} focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md pr-10`}
+              className={`border ${fieldError.password ? "border-red-500" : "border-gray-300"} focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md pr-10 min-h-[44px] sm:min-h-0`}
             />
             {/* Conditionally render the icon only if there is a value */}
             {passwordValue && (
@@ -193,7 +193,7 @@ export function SignUpForm() {
               required
               value={confirmPasswordValue} // Control value with state
               onChange={(e) => setConfirmPasswordValue(e.target.value)} // Update state on change
-              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md pr-10"
+              className="border border-gray-300 focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all rounded-md pr-10 min-h-[44px] sm:min-h-0"
             />
             {/* Conditionally render the icon only if there is a value */}
             {confirmPasswordValue && (

@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   icons: {
     icon: '/images/Greenlogoicon.svg',
     apple: '/images/Greenlogoicon.svg',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
   }
 }
 

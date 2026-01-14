@@ -315,6 +315,12 @@ export default function ProfilePage() {
                     width={160}
                     height={160}
                     className="w-full h-full object-cover"
+                    unoptimized={profile.image?.includes('blob.vercel-storage.com') || profile.image?.startsWith('http')}
+                    onError={(e) => {
+                      // Fallback to placeholder on error
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/placeholder.svg';
+                    }}
                   />
                 </div>
                 {isEditing && (

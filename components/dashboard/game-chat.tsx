@@ -273,6 +273,12 @@ export function GameChat({ gameId, isOpen, onClose, isPlayer = false }: GameChat
                         width={32}
                         height={32}
                         className="w-8 h-8 rounded-full object-cover"
+                        unoptimized={message.userImage?.includes('blob.vercel-storage.com') || message.userImage?.startsWith('http')}
+                        onError={(e) => {
+                          // Fallback to placeholder on error
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/placeholder-user.jpg';
+                        }}
                       />
                     ) : (
                       <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">

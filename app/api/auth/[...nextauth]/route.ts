@@ -34,8 +34,18 @@ export const authOptions: NextAuthOptions = {
 
         await connectDB()
 
-          const user = await User.findOne({ email: credentials.email.toLowerCase() }).select("+password")
-          if (!user || !user.password) return null
+          const user = await User.findOne({ email: credentials.email.toLowerCase() }).select("+password provider")
+          
+          if (!user) return null
+          
+          // Check if user signed up with Google (no password means Google account)
+          // MongoDBAdapter stores OAuth accounts separately, so if there's no password,
+          // it's likely a Google account
+          if (!user.password || user.provider === 'google') {
+            // Return null to trigger error, but we'll handle this in the login form
+            // by checking before attempting login
+            return null
+          }
 
           // Check if user is banned - return null and let signIn callback handle the redirect
           if (user.isBanned) {

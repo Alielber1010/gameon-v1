@@ -10,6 +10,7 @@ export interface GoogleMapsLinkData {
 
 /**
  * Validates if a URL is from Google Maps
+ * Supports both full URLs and shortened URLs from Google Maps app
  */
 export function isValidGoogleMapsLink(url: string): boolean {
   if (!url || typeof url !== 'string') {
@@ -20,11 +21,22 @@ export function isValidGoogleMapsLink(url: string): boolean {
     'google.com/maps',
     'maps.google.com',
     'goo.gl/maps',
-    'maps.app.goo.gl',
+    'maps.app.goo.gl', // Google Maps mobile app short links
   ]
 
   const lowerUrl = url.toLowerCase().trim()
-  return googleMapsDomains.some(domain => lowerUrl.includes(domain))
+  
+  // Check if it's a Google Maps domain
+  const isGoogleMaps = googleMapsDomains.some(domain => lowerUrl.includes(domain))
+  
+  // Also check for the full URL pattern with protocol
+  if (!isGoogleMaps && (lowerUrl.startsWith('http://') || lowerUrl.startsWith('https://'))) {
+    // Remove protocol and check again
+    const urlWithoutProtocol = lowerUrl.replace(/^https?:\/\//, '')
+    return googleMapsDomains.some(domain => urlWithoutProtocol.includes(domain))
+  }
+  
+  return isGoogleMaps
 }
 
 /**
@@ -46,6 +58,7 @@ export async function extractCoordinatesFromGoogleMapsLink(url: string): Promise
     let cleanUrl = url.trim()
     
     // Handle shortened URLs by resolving them via API
+    // This includes both goo.gl/maps and maps.app.goo.gl (Google Maps mobile app links)
     if (cleanUrl.includes('goo.gl/maps') || cleanUrl.includes('maps.app.goo.gl')) {
       try {
         const response = await fetch('/api/geocode/google-maps', {
@@ -56,10 +69,16 @@ export async function extractCoordinatesFromGoogleMapsLink(url: string): Promise
           body: JSON.stringify({ url: cleanUrl }),
         })
 
+        if (!response.ok) {
+          console.error('Failed to resolve shortened URL:', response.status)
+          return null
+        }
+
         const data = await response.json()
         if (data.success && data.data?.resolvedUrl) {
           cleanUrl = data.data.resolvedUrl
         } else {
+          console.error('API returned unsuccessful response:', data)
           return null
         }
       } catch (error) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -8,10 +8,24 @@ import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { User, Mail, Phone, MapPin, Calendar, Trophy, Star, Gamepad2, AlertTriangle, Ban, Shield, ShieldCheck } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
 import type { User as UserType } from "./users-table"
 import { WarningNotificationForm } from "./warning-notification-form"
 import { BanUserModal } from "./ban-user-modal"
 import { BanSuccessModal } from "./ban-success-modal"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Game {
   id: string
@@ -37,8 +51,64 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
   const [successBanState, setSuccessBanState] = useState(false)
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false)
+  const [currentRole, setCurrentRole] = useState(user?.role || 'user')
+  const [showSecretDialog, setShowSecretDialog] = useState(false)
+  const [secretKey, setSecretKey] = useState("")
+  const [pendingRole, setPendingRole] = useState<string | null>(null)
 
   if (!user) return null
+
+  // Update current role when user changes
+  useEffect(() => {
+    setCurrentRole(user.role || 'user')
+  }, [user.role])
+
+  const handleRoleChange = (newRole: string) => {
+    if (newRole === currentRole) return
+    setPendingRole(newRole)
+    setSecretKey("")
+    setShowSecretDialog(true)
+  }
+
+  const confirmRoleChange = async () => {
+    if (!pendingRole) return
+
+    setIsUpdatingRole(true)
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: pendingRole, secretKey }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setCurrentRole(pendingRole)
+        setShowSecretDialog(false)
+        setSecretKey("")
+        setPendingRole(null)
+        if (onUserUpdated) {
+          onUserUpdated()
+        }
+      } else {
+        console.error('Failed to update role:', data.error)
+        alert(data.error || 'Failed to update user role')
+        // Revert to original role
+        setCurrentRole(user.role || 'user')
+      }
+    } catch (error) {
+      console.error('Error updating role:', error)
+      alert('Failed to update user role')
+      // Revert to original role
+      setCurrentRole(user.role || 'user')
+    } finally {
+      setIsUpdatingRole(false)
+    }
+  }
 
   const handleBanToggle = () => {
     console.log('[UserDetailsModal] Ban toggle clicked, current user state:', {
@@ -114,9 +184,33 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-xl font-bold">{user.name}</h3>
-                <Badge className={getRoleColor(user.role)}>
-                  {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={currentRole}
+                    onValueChange={handleRoleChange}
+                    disabled={isUpdatingRole}
+                  >
+                    <SelectTrigger className="w-24 h-7">
+                      {isUpdatingRole ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <SelectValue>
+                          <Badge className={getRoleColor(currentRole)}>
+                            {currentRole.charAt(0).toUpperCase() + currentRole.slice(1)}
+                          </Badge>
+                        </SelectValue>
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">
+                        <span className="text-blue-700">User</span>
+                      </SelectItem>
+                      <SelectItem value="admin">
+                        <span className="text-red-700">Admin</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 {user.isBanned && (
                   <Badge className="bg-red-100 text-red-700">
                     BANNED
@@ -353,6 +447,68 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
         onClose={() => setShowSuccessModal(false)}
         wasBanned={successBanState}
       />
+
+      {/* Secret Key Dialog for Role Change */}
+      <AlertDialog open={showSecretDialog} onOpenChange={setShowSecretDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Role Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              Changing user role requires admin secret key. Enter the secret key to proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="secretKey">Admin Secret Key</Label>
+              <Input
+                id="secretKey"
+                type="password"
+                value={secretKey}
+                onChange={(e) => setSecretKey(e.target.value)}
+                placeholder="Enter admin secret key"
+                className="min-h-[44px] sm:min-h-0"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && secretKey) {
+                    confirmRoleChange()
+                  }
+                }}
+              />
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+              <p className="text-sm text-yellow-800">
+                <strong>Changing role from:</strong> {currentRole} → <strong>{pendingRole}</strong>
+              </p>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowSecretDialog(false)
+                setSecretKey("")
+                setPendingRole(null)
+                setCurrentRole(user.role || 'user')
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRoleChange}
+              disabled={!secretKey || isUpdatingRole}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isUpdatingRole ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Updating...
+                </>
+              ) : (
+                'Confirm Change'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

@@ -8,9 +8,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
-import { BarChart3, Flag, Users, LogOut, Gamepad2 } from "lucide-react"
+import { BarChart3, Flag, Users, LogOut, Gamepad2, FileText } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -37,10 +38,23 @@ const menuItems = [
     url: "/admin/users",
     icon: Users,
   },
+  {
+    title: "Privacy Policy",
+    url: "/admin/privacy-policy",
+    icon: FileText,
+  },
 ]
 
 export function AdminSidebar() {
   const pathname = usePathname()
+  const { setOpenMobile, isMobile } = useSidebar()
+  
+  // Close sidebar on mobile when a link is clicked
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   return (
     <Sidebar className="bg-red-600 text-white">
@@ -63,7 +77,7 @@ export function AdminSidebar() {
                   pathname === item.url && "bg-red-700",
                 )}
               >
-                <Link href={item.url}>
+                <Link href={item.url} onClick={handleLinkClick}>
                   <item.icon className="h-4 w-4" />
                   <span>{item.title}</span>
                 </Link>

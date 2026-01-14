@@ -12,9 +12,9 @@ export default withAuth(
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }
 
-    // If user is admin and trying to access dashboard, redirect to admin
+    // If user is admin and trying to access dashboard, redirect to admin dashboard
     if (!isAdminRoute && isAdmin && req.nextUrl.pathname.startsWith("/dashboard")) {
-      return NextResponse.redirect(new URL("/admin", req.url))
+      return NextResponse.redirect(new URL("/admin/dashboard", req.url))
     }
 
     return NextResponse.next()

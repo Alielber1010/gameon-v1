@@ -596,7 +596,7 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
               <Input
                 id="location"
                 type="url"
-                placeholder="https://www.google.com/maps?q=lat,lng"
+                placeholder="https://maps.app.goo.gl/... or https://www.google.com/maps?q=lat,lng"
                 value={formData.location}
                 onChange={(e) => handleLocationLinkChange(e.target.value)}
                 required
@@ -606,8 +606,8 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
                 <p className="text-xs text-red-500">{locationError}</p>
               )}
               {locationCoordinates && (
-                <p className="text-xs text-gray-500">
-                  Coordinates: {locationCoordinates.lat.toFixed(6)}, {locationCoordinates.lng.toFixed(6)}
+                <p className="text-xs text-green-600">
+                  ✓ Coordinates: {locationCoordinates.lat.toFixed(6)}, {locationCoordinates.lng.toFixed(6)}
                 </p>
               )}
               <div className="text-xs text-gray-500 space-y-1">
@@ -617,12 +617,16 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
                   <li>Find the sport court location</li>
                   <li>Tap/click on the location to place a pin</li>
                   <li>Click "Share" or right-click and select "Copy link"</li>
-                  <li>Paste the link here</li>
+                  <li>Paste the link here (mobile app links work too!)</li>
                 </ol>
                 <p className="mt-2">
                   <ExternalLink className="h-3 w-3 inline mr-1" />
-                  Example: <code className="text-xs bg-gray-100 px-1 rounded">https://www.google.com/maps?q=3.1390,101.6869</code>
+                  Supported formats:
                 </p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li><code className="text-xs bg-gray-100 px-1 rounded">https://maps.app.goo.gl/...</code> (Mobile app)</li>
+                  <li><code className="text-xs bg-gray-100 px-1 rounded">https://www.google.com/maps?q=lat,lng</code> (Web)</li>
+                </ul>
               </div>
             </div>
 

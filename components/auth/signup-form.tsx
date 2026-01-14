@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FcGoogle } from "react-icons/fc";
 import { HiEye, HiEyeOff } from "react-icons/hi"; 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export function SignUpForm() {
   const router = useRouter();
@@ -73,7 +74,18 @@ export function SignUpForm() {
         setGeneralError("Sign up successful, but automatic sign in failed. Please sign in manually.");
         setIsLoading(false);
       } else if (signInResult?.ok) {
-        router.push("/dashboard");
+        // Check if user is admin and redirect accordingly
+        try {
+          const session = await fetch("/api/auth/session").then(res => res.json());
+          if (session?.user?.role === "admin") {
+            router.push("/admin/dashboard");
+          } else {
+            router.push("/dashboard");
+          }
+        } catch (error) {
+          // Fallback to dashboard if session check fails
+          router.push("/dashboard");
+        }
       }
 
     } catch (error) {
@@ -219,15 +231,11 @@ export function SignUpForm() {
           {generalError && <p className="text-center text-sm text-red-500 mt-2">{generalError}</p>}
         </form>
 
-        <p className="text-center text-xs text-gray-500 mt-4">
+        <p className="text-center text-xs text-gray-500 mt-4 px-4">
           By continuing, you agree to our{" "}
-          <a href="#" className="underline hover:text-green-600">
-            Terms of Service
-          </a>{" "}
-          and{" "}
-          <a href="#" className="underline hover:text-green-600">
+          <Link href="/privacy" className="text-green-600 hover:text-green-700 hover:underline font-medium">
             Privacy Policy
-          </a>
+          </Link>
         </p>
       </CardContent>
     </Card>

@@ -12,6 +12,7 @@ import { FcGoogle } from "react-icons/fc";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import Link from "next/link";
 
 export function LoginForm() {
   const router = useRouter();
@@ -83,7 +84,7 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError("");
-    // Redirect to dashboard - middleware will redirect admins to /admin automatically
+    // Redirect to dashboard - middleware will redirect admins to /admin/dashboard automatically
     await signIn("google", { callbackUrl: "/dashboard" });
   };
 
@@ -92,6 +93,41 @@ export function LoginForm() {
     setIsLoading(true);
     setError("");
 
+    // First check if the account exists
+    try {
+      const checkUserResponse = await fetch(`/api/users/check-email?email=${encodeURIComponent(email)}`);
+      const checkUserData = await checkUserResponse.json();
+      
+      if (!checkUserData.exists) {
+        setError("This account doesn't exist. Please check your email or sign up for a new account.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if account was created with Google OAuth
+      if (checkUserData.isGoogleAccount || checkUserData.provider === 'google') {
+        setError("This account was created using Google sign-in. Please use the 'Continue with Google' button above to sign in.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if user is banned before attempting login
+      if (checkUserData.isBanned) {
+        const banResponse = await fetch(`/api/users/ban-info?email=${encodeURIComponent(email)}`);
+        const banData = await banResponse.json();
+        if (banData.success && banData.banReason) {
+          setBanReason(banData.banReason);
+          setShowBanModal(true);
+          setError("");
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error checking user:', err);
+      // Continue with login attempt if check fails
+    }
+
     const result = await signIn("credentials", {
       email,
       password,
@@ -99,8 +135,7 @@ export function LoginForm() {
     });
 
     if (result?.error) {
-      // Always check if user is banned when there's an error
-      // This handles both AccountBanned and CredentialsSignin errors
+      // Check if user is banned when there's an error
       if (email) {
         try {
           const banResponse = await fetch(`/api/users/ban-info?email=${encodeURIComponent(email)}`);
@@ -118,15 +153,15 @@ export function LoginForm() {
         }
       }
       
-      // Not banned or couldn't check, show invalid credentials error
-      setError("Invalid email or password. Please try again.");
+      // Account exists but password is wrong
+      setError("Incorrect password. Please try again.");
       setIsLoading(false);
     } else if (result?.ok) {
       // Fetch session to check role and redirect accordingly
       try {
         const session = await fetch("/api/auth/session").then(res => res.json());
         if (session?.user?.role === "admin") {
-          router.push("/admin");
+          router.push("/admin/dashboard");
         } else {
           router.push("/dashboard");
         }
@@ -141,9 +176,9 @@ export function LoginForm() {
     <>
     <Card className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur">
       <CardHeader className="text-center space-y-3">
-        <CardTitle className="text-3xl font-bold text-gray-900">Welcome to GameOn</CardTitle>
+        <CardTitle className="text-3xl font-bold text-gray-900">Log In</CardTitle>
         <CardDescription className="text-base text-gray-600">
-          Sign in to join pickup games near you
+          Sign in to your account to join pickup games near you
         </CardDescription>
       </CardHeader>
 
@@ -224,30 +259,38 @@ export function LoginForm() {
           </div>
 
           {error && (
-            <Alert variant="destructive">
+            <Alert 
+              variant={error.includes("Google sign-in") ? "default" : "destructive"}
+              className={error.includes("Google sign-in") ? "bg-blue-50 border-blue-200 text-blue-800" : ""}
+            >
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription className={error.includes("Google sign-in") ? "text-blue-800" : ""}>
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-green-600 hover:bg-green-700"
+            className="w-full bg-green-600 hover:bg-green-700 text-base font-semibold"
           >
-            {isLoading && mode === "email" ? "Signing in..." : "Sign in with Email"}
+            {isLoading && mode === "email" ? "Logging in..." : "Log In"}
           </Button>
         </form>
 
         <div className="text-center text-sm text-gray-600">
           Don't have an account?{" "}
-          <a href="/signup" className="text-green-600 font-medium hover:underline">
-            Sign up
-          </a>
+          <Link href="/signup" className="text-green-600 font-medium hover:underline">
+            Sign up here
+          </Link>
         </div>
 
-        <p className="text-center text-xs text-gray-500 mt-8">
-          By continuing, you agree to our Terms and Privacy Policy
+        <p className="text-center text-xs text-gray-500 mt-6 sm:mt-8 px-4">
+          By continuing, you agree to our{" "}
+          <Link href="/privacy" className="text-green-600 hover:text-green-700 hover:underline font-medium">
+            Privacy Policy
+          </Link>
         </p>
       </CardContent>
     </Card>

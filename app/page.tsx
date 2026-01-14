@@ -7,12 +7,23 @@ import { Loader2 } from "lucide-react"
 
 export default function HomePage() {
   const router = useRouter()
-  const { status } = useSession()
+  const { data: session, status } = useSession()
 
   useEffect(() => {
-    // Redirect to dashboard immediately
-    router.push('/dashboard')
-  }, [router])
+    if (status === "loading") return
+    
+    // Redirect based on user role
+    if (status === "authenticated") {
+      if (session?.user?.role === "admin") {
+        router.push('/admin/dashboard')
+      } else {
+        router.push('/dashboard')
+      }
+    } else {
+      // Not authenticated, redirect to login
+      router.push('/login')
+    }
+  }, [router, status, session])
 
   // Show loading state while redirecting
   return (

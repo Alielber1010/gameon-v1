@@ -8,6 +8,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Logo } from "@/components/ui/logo"
 import { Home, Calendar, Bot, Bell, User, LogOut, History, Activity } from "lucide-react"
@@ -58,6 +59,14 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { data: session, status } = useSession()
   const [unreadCount, setUnreadCount] = useState(0)
+  const { setOpenMobile, isMobile } = useSidebar()
+  
+  // Close sidebar on mobile when a link is clicked
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -108,7 +117,7 @@ export function AppSidebar() {
                   pathname === item.url && "bg-green-700",
                 )}
               >
-                <Link href={item.url} className="relative">
+                <Link href={item.url} className="relative" onClick={handleLinkClick}>
                   <item.icon className="h-4 w-4" />
                   <span>{item.title}</span>
                   {item.title === "Notifications" && unreadCount > 0 && (
@@ -136,7 +145,7 @@ export function AppSidebar() {
                   pathname === "/dashboard/profile" && "bg-green-700",
                 )}
               >
-                <Link href="/dashboard/profile" className="relative flex items-center gap-2">
+                <Link href="/dashboard/profile" className="relative flex items-center gap-2" onClick={handleLinkClick}>
                   {session?.user?.image ? (
                     <div className="relative h-5 w-5 rounded-full overflow-hidden flex-shrink-0 border border-white/20">
                       <Image

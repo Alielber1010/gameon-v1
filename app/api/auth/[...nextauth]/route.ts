@@ -32,6 +32,47 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
+        // Hardcoded admin account
+        const ADMIN_EMAIL = "admin@gmail.com"
+        const ADMIN_PASSWORD = "t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2"
+        
+        if (credentials.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+          // Check hardcoded admin password
+          if (credentials.password === ADMIN_PASSWORD) {
+            await connectDB()
+            // Find or create admin user
+            let adminUser = await User.findOne({ email: ADMIN_EMAIL.toLowerCase() })
+            
+            if (!adminUser) {
+              // Create admin user if it doesn't exist
+              adminUser = await User.create({
+                name: "Admin",
+                email: ADMIN_EMAIL.toLowerCase(),
+                password: await bcrypt.hash(ADMIN_PASSWORD, 10),
+                role: "admin",
+                provider: "credentials",
+              })
+            } else {
+              // Ensure existing admin user has admin role
+              if (adminUser.role !== "admin") {
+                adminUser.role = "admin"
+                await adminUser.save()
+              }
+            }
+            
+            return {
+              id: adminUser._id.toString(),
+              email: adminUser.email,
+              name: adminUser.name,
+              role: "admin",
+              image: adminUser.image || "",
+            }
+          } else {
+            // Wrong password for admin account
+            return null
+          }
+        }
+
         await connectDB()
 
           const user = await User.findOne({ email: credentials.email.toLowerCase() }).select("+password provider")
@@ -92,10 +133,11 @@ export const authOptions: NextAuthOptions = {
         
         const existingUser = await User.findOne({ email: user.email.toLowerCase() })
         
-        // If user exists with credentials provider, allow linking by returning true
-        // The MongoDBAdapter will handle creating the OAuth account link
+        // If user exists, preserve their role (especially if they're an admin)
         if (existingUser) {
-          // User exists - allow sign in (NextAuth will link accounts)
+          // Preserve the existing role - MongoDBAdapter might overwrite it
+          // We'll handle role preservation in the JWT callback instead
+          console.log(`[signIn] Google OAuth for existing user: ${user.email}, current role: ${existingUser.role}`)
           return true
         }
         
@@ -107,21 +149,36 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account }) {
-      // On initial sign in, set user data
+      // On initial sign in, set basic user data
       if (user) {
         token.id = user.id
-        token.role = (user as any).role || "user"
+        // Don't set role from user object - always fetch from database
       }
       
-      // For OAuth users (Google), fetch role from database
-      // This runs on initial sign-in and subsequent token refreshes
-      if (token.email && (!token.role || account?.provider === "google")) {
-        await connectDB()
-        const dbUser = await User.findOne({ email: token.email.toLowerCase() })
-        if (dbUser) {
-          token.role = dbUser.role || "user"
-          token.id = dbUser._id.toString()
+      // ALWAYS fetch the latest role from database - never trust cached values
+      // This ensures role changes are immediately reflected
+      if (token.email) {
+        try {
+          await connectDB()
+          const dbUser = await User.findOne({ email: token.email.toLowerCase() })
+          if (dbUser) {
+            // Always use the role from database, never trust the token or user object
+            token.role = dbUser.role || "user"
+            token.id = dbUser._id.toString()
+            console.log(`[JWT] Fetched role for ${token.email}: ${dbUser.role} (was: ${(user as any)?.role || token.role})`)
+          } else {
+            console.warn(`[JWT] User not found in database for email: ${token.email}`)
+            // Fallback to user role if not found
+            token.role = token.role || "user"
+          }
+        } catch (error) {
+          console.error(`[JWT] Error fetching user role for ${token.email}:`, error)
+          // Fallback to user role on error
+          token.role = token.role || "user"
         }
+      } else {
+        // If no email, default to user role
+        token.role = token.role || "user"
       }
       
       return token

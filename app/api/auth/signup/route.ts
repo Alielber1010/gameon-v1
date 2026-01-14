@@ -12,6 +12,11 @@ export async function POST(req: Request) {
 
   await connectDB();
 
+  // Prevent creating admin@gmail.com through signup
+  if (email.toLowerCase() === "admin@gmail.com") {
+    return NextResponse.json({ error: "This email cannot be used for signup" }, { status: 403 });
+  }
+
   // Case-insensitive email check
   const exists = await User.findOne({ email: email.toLowerCase() });
   if (exists) {

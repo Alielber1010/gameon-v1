@@ -454,18 +454,18 @@ export function UserDetailsModal({ user, games, isOpen, onClose, loadingGames = 
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Role Change</AlertDialogTitle>
             <AlertDialogDescription>
-              Changing user role requires admin secret key. Enter the secret key to proceed.
+              Changing user role requires the admin password. Enter the admin password to proceed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="secretKey">Admin Secret Key</Label>
+              <Label htmlFor="secretKey">Admin Password</Label>
               <Input
                 id="secretKey"
                 type="password"
                 value={secretKey}
                 onChange={(e) => setSecretKey(e.target.value)}
-                placeholder="Enter admin secret key"
+                placeholder="Enter admin password"
                 className="min-h-[44px] sm:min-h-0"
                 autoFocus
                 onKeyDown={(e) => {

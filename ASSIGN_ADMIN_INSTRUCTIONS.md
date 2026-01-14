@@ -1,83 +1,31 @@
-# Assign Admin Role Instructions
+# Admin Role Management
 
-## Quick Start: Assign Admin to ali.melbermawy@gmail.com
+## Hardcoded Admin Account
 
-### Using cURL
-```bash
-curl -X POST http://localhost:3000/api/admin/assign-admin \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "ali.melbermawy@gmail.com",
-    "secretKey": "t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2"
-  }'
-```
+There is one hardcoded admin account that cannot be changed:
 
-## Method 1: Using the API Endpoint (Recommended)
+- **Email:** `admin@gmail.com`
+- **Password:** `t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2`
 
-You can assign admin role to `ali.melbermawy@gmail.com` using the existing API endpoint.
+This account is automatically created on first login and always has admin role.
 
-### Using cURL:
-```bash
-curl -X POST http://localhost:3000/api/admin/assign-admin \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "ali.melbermawy@gmail.com",
-    "secretKey": "t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2"
-  }'
-```
+## Assigning Admin Roles to Other Users
 
-### Using JavaScript/Node.js:
-```javascript
-fetch('http://localhost:3000/api/admin/assign-admin', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    email: 'ali.melbermawy@gmail.com',
-    secretKey: 't9rmQXsQj9b0K37J3rkBIncdXxD8WPd2'
-  })
-})
-.then(res => res.json())
-.then(data => console.log(data))
-.catch(err => console.error(err));
-```
+Only existing admins can assign admin roles to other users. To assign an admin role:
 
-### Using Postman or similar:
-1. Method: POST
-2. URL: `http://localhost:3000/api/admin/assign-admin`
-3. Headers: `Content-Type: application/json`
-4. Body (JSON):
-```json
-{
-  "email": "ali.melbermawy@gmail.com",
-  "secretKey": "t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2"
-}
-```
-
-## Method 2: Using the Admin Panel (After First Admin is Created)
-
-Once you have at least one admin, you can:
-1. Log in as an admin
+1. Log in as an admin (using `admin@gmail.com` or any existing admin account)
 2. Go to Admin → Users
-3. Click on the user you want to change
-4. Change the role dropdown
-5. Enter the admin secret key when prompted
+3. Click on the user you want to make an admin
+4. Change the role dropdown from "User" to "Admin"
+5. When prompted, enter the admin password: `t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2`
 6. Confirm the change
 
 ## Security Notes
 
-- The `ADMIN_SECRET_KEY` must be set in your environment variables
-- The secret key is required for all role changes
-- Never commit the secret key to version control
-- Keep the secret key secure and rotate it periodically
-
-## Environment Variable
-
-Make sure you have this in your `.env.local` or environment:
-```
-ADMIN_SECRET_KEY=t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2
-```
+- The admin password is hardcoded: `t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2`
+- Only admins can assign admin roles to other users
+- The admin password is required when changing any user's role
+- The `admin@gmail.com` account cannot be created through normal signup
 
 ## Access Control
 

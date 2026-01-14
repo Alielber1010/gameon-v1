@@ -49,27 +49,19 @@ export async function PUT(
       );
     }
 
-    // Require ADMIN_SECRET_KEY for role changes
-    const requiredSecretKey = process.env.ADMIN_SECRET_KEY;
-    
-    if (!requiredSecretKey) {
-      console.error('ADMIN_SECRET_KEY environment variable is not set');
-      return NextResponse.json(
-        { success: false, error: 'Server configuration error: ADMIN_SECRET_KEY not configured' },
-        { status: 500 }
-      );
-    }
+    // Require admin password for role changes
+    const ADMIN_PASSWORD = "t9rmQXsQj9b0K37J3rkBIncdXxD8WPd2";
 
     if (!secretKey) {
       return NextResponse.json(
-        { success: false, error: 'Secret key is required to change user roles' },
+        { success: false, error: 'Admin password is required to change user roles' },
         { status: 400 }
       );
     }
 
-    if (secretKey !== requiredSecretKey) {
+    if (secretKey !== ADMIN_PASSWORD) {
       return NextResponse.json(
-        { success: false, error: 'Invalid secret key' },
+        { success: false, error: 'Invalid admin password' },
         { status: 403 }
       );
     }

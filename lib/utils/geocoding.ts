@@ -151,6 +151,33 @@ export async function searchLocations(query: string, limit: number = 5): Promise
 }
 
 /**
+ * Extract city name from formatted address string
+ * Example: "Subang Jaya City Council, Petaling, Selangor, Malaysia" -> "Subang Jaya"
+ */
+function extractCityFromFormattedAddress(formattedAddress: string): string | null {
+  if (!formattedAddress) return null;
+  
+  // Split by comma and get the first part (usually contains city name)
+  const parts = formattedAddress.split(',').map(p => p.trim());
+  
+  if (parts.length === 0) return null;
+  
+  // First part is usually the city/place name
+  let cityPart = parts[0];
+  
+  // Remove common suffixes like "City Council", "Municipality", etc.
+  cityPart = cityPart
+    .replace(/\s+City\s+Council/gi, '')
+    .replace(/\s+City/gi, '')
+    .replace(/\s+Municipality/gi, '')
+    .replace(/\s+District/gi, '')
+    .replace(/\s+County/gi, '')
+    .trim();
+  
+  return cityPart || null;
+}
+
+/**
  * Reverse geocode coordinates to get address
  */
 export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeResult | null> {
@@ -173,10 +200,16 @@ export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeR
       return null;
     }
 
-    const city = data.address.city || 
-                 data.address.town || 
-                 data.address.village ||
-                 data.address.municipality;
+    // Try to get city from address components first
+    let city = data.address.city || 
+               data.address.town || 
+               data.address.village ||
+               data.address.municipality;
+    
+    // If city not found in components, extract from formatted address
+    if (!city && data.display_name) {
+      city = extractCityFromFormattedAddress(data.display_name);
+    }
     
     const country = data.address.country;
 

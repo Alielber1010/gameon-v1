@@ -38,12 +38,10 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
           const result = await reverseGeocode(latitude, longitude)
           
           if (result) {
-            // Format: "City, Country" or fallback to formatted address
-            const formattedLocation = result.city && result.country
-              ? `${result.city}, ${result.country}`
-              : result.formattedAddress || result.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+            // Use only the city name for location display
+            const locationToShow = result.city || result.formattedAddress || result.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
             
-            onLocationChange(formattedLocation)
+            onLocationChange(locationToShow)
             // Extract and notify city change
             if (result.city && onCityChange) {
               onCityChange(result.city)
@@ -124,11 +122,10 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
 
   // Handle location selection from autocomplete
   const handleLocationSelect = (suggestion: LocationSuggestion) => {
-    const formattedLocation = suggestion.city && suggestion.displayName.includes(suggestion.city)
-      ? suggestion.displayName
-      : `${suggestion.city || suggestion.displayName.split(',')[0]}, ${suggestion.displayName.split(',').pop()?.trim() || ''}`
+    // Use only the city name for location display
+    const cityName = suggestion.city || suggestion.displayName.split(',')[0]?.trim() || suggestion.displayName
     
-    onLocationChange(formattedLocation)
+    onLocationChange(cityName)
     
     // Extract city and notify
     if (suggestion.city && onCityChange) {

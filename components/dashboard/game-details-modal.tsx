@@ -171,12 +171,12 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">{currentGame.sport.toUpperCase()}</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-bold">{currentGame.sport.toUpperCase()}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Game Image */}
             <div className="relative">
               <Image
@@ -184,15 +184,15 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                 alt={currentGame.title}
                 width={800}
                 height={200}
-                className="w-full h-48 object-cover rounded-lg"
+                className="w-full h-32 sm:h-48 object-cover rounded-lg"
               />
             </div>
 
             {/* Game Details */}
-            <div className="space-y-4">
-              <p className="text-gray-600">{currentGame.description || "No description provided"}</p>
+            <div className="space-y-3 sm:space-y-4">
+              <p className="text-sm sm:text-base text-gray-600">{currentGame.description || "No description provided"}</p>
 
-              <div className="flex flex-wrap gap-6 text-sm">
+              <div className="flex flex-wrap gap-3 sm:gap-6 text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="flex items-center gap-1">
                     <span>🎯</span>
@@ -221,8 +221,8 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
+              <div className="flex items-start sm:items-center gap-2">
+                <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 sm:mt-0 flex-shrink-0" />
                 {(() => {
                   const locationDisplay = formatLocationForDisplay(currentGame.location)
                   if (locationDisplay.isLink && locationDisplay.url) {
@@ -231,30 +231,30 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                         href={locationDisplay.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1"
+                        className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1 text-xs sm:text-sm break-words"
                       >
-                        {locationDisplay.text}
-                        <ExternalLink className="h-3 w-3" />
+                        <span className="break-words">{locationDisplay.text}</span>
+                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
                       </a>
                     )
                   }
-                  return <span>{locationDisplay.text}</span>
+                  return <span className="text-xs sm:text-sm break-words">{locationDisplay.text}</span>
                 })()}
               </div>
             </div>
 
             {/* Players Section */}
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-bold text-lg">Players</h4>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Users className="h-4 w-4" />
-                  <span className="text-sm">
-                    {allPlayers.length} / {currentGame.maxPlayers || allPlayers.length} players
+            <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h4 className="font-bold text-base sm:text-lg">Players</h4>
+                <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
+                  <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="text-xs sm:text-sm">
+                    {allPlayers.length} / {currentGame.maxPlayers || allPlayers.length}
                   </span>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {isLoadingGame ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-green-600" />
@@ -263,9 +263,9 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                   <>
                     {/* Host at the top */}
                     {currentGame.hostName && (
-                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2 border-yellow-200">
+                      <div className="flex items-center justify-between p-2 sm:p-3 bg-white rounded-lg border-2 border-yellow-200">
                         <div
-                          className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                          className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-gray-50 p-1 sm:p-2 rounded flex-1 min-w-0"
                           onClick={() => {
                             const hostPlayer: any = {
                               id: currentGame.hostId,
@@ -284,20 +284,20 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                               alt={currentGame.hostName}
                               width={40}
                               height={40}
-                              className="w-10 h-10 rounded-full object-cover"
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0"
                             />
                           ) : (
-                            <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
                               <span className="text-white text-xs font-bold">{currentGame.hostName?.charAt(0)}</span>
                             </div>
                           )}
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <div className="font-medium flex items-center gap-2">
-                                {currentGame.hostName}
-                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 text-xs flex items-center gap-1">
-                                  <Crown className="h-3 w-3" />
-                                  Host
+                          <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm sm:text-base flex items-center gap-1 sm:gap-2 flex-wrap">
+                                <span className="truncate">{currentGame.hostName}</span>
+                                <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 text-xs flex items-center gap-1 flex-shrink-0">
+                                  <Crown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                  <span className="hidden sm:inline">Host</span>
                                 </Badge>
                               </div>
                             </div>
@@ -308,9 +308,9 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                     {/* Regular players */}
                     {currentGame.registeredPlayers && currentGame.registeredPlayers.length > 0 && (
                       currentGame.registeredPlayers.map((player: any) => (
-                        <div key={player.id || player.userId} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                        <div key={player.id || player.userId} className="flex items-center justify-between p-2 sm:p-3 bg-white rounded-lg">
                           <div
-                            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                            className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-gray-50 p-1 sm:p-2 rounded flex-1 min-w-0"
                             onClick={() => handlePlayerClick(player)}
                           >
                             {player.image ? (
@@ -319,17 +319,17 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                                 alt={player.name}
                                 width={40}
                                 height={40}
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0"
                               />
                             ) : (
-                              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                                 <span className="text-white text-xs font-bold">{player.name?.charAt(0)}</span>
                               </div>
                             )}
-                            <div>
-                              <div className="font-medium">{player.name}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-sm sm:text-base truncate">{player.name}</div>
                               {(player.age || player.skillLevel) && (
-                                <div className="text-sm text-gray-600">
+                                <div className="text-xs sm:text-sm text-gray-600 truncate">
                                   {player.age && `${player.age} years`}
                                   {player.age && player.skillLevel && ' • '}
                                   {player.skillLevel && player.skillLevel}
@@ -351,30 +351,30 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-4 border-t">
-              <Button variant="outline" onClick={onReport} className="flex items-center gap-2">
-                <Flag className="h-4 w-4" />
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={onReport} className="flex items-center justify-center gap-2 w-full sm:w-auto text-sm sm:text-base">
+                <Flag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 Report
               </Button>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
                 {isCurrentUserPlayer ? (
-                  <Button disabled className="bg-gray-400">
+                  <Button disabled className="bg-gray-400 w-full sm:w-auto text-sm sm:text-base">
                     Already Joined
                   </Button>
                 ) : hasPendingJoinRequest ? (
-                  <Button disabled className="bg-yellow-500">
+                  <Button disabled className="bg-yellow-500 w-full sm:w-auto text-sm sm:text-base">
                     Pending Request
                   </Button>
                 ) : (
                   <Button
                     onClick={handleJoinGame}
                     disabled={isJoining || (currentGame.seatsLeft || 0) <= 0}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-green-600 hover:bg-green-700 w-full sm:w-auto text-sm sm:text-base"
                   >
                     {isJoining ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
                         Joining...
                       </>
                     ) : (

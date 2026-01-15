@@ -259,18 +259,18 @@ export function HostedGameManagementModal({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold">{currentGame.sport.toUpperCase()}</DialogTitle>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <DialogTitle className="text-xl sm:text-2xl font-bold">{currentGame.sport.toUpperCase()}</DialogTitle>
+            <div className="flex items-center gap-2 flex-wrap">
               {hasPendingJoinRequest && (
-                <Badge className="bg-orange-500 text-white">
+                <Badge className="bg-orange-500 text-white text-xs sm:text-sm">
                   Pending Request
                 </Badge>
               )}
               {isCurrentUserHost && currentGame.joinRequests && currentGame.joinRequests.length > 0 && (
-                <Badge className="bg-orange-500 text-white">
+                <Badge className="bg-orange-500 text-white text-xs sm:text-sm">
                   {currentGame.joinRequests.length} pending request{currentGame.joinRequests.length !== 1 ? 's' : ''}
                 </Badge>
               )}
@@ -278,7 +278,7 @@ export function HostedGameManagementModal({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Game Image */}
           <div className="relative">
             <Image
@@ -286,17 +286,17 @@ export function HostedGameManagementModal({
               alt={game.title}
               width={800}
               height={200}
-              className="w-full h-48 object-cover rounded-lg"
+              className="w-full h-32 sm:h-48 object-cover rounded-lg"
             />
           </div>
 
           {/* Game Details */}
-          <div className="space-y-4">
-            <p className="text-gray-600">
+          <div className="space-y-3 sm:space-y-4">
+            <p className="text-sm sm:text-base text-gray-600">
               {currentGame.description || "No description provided"}
             </p>
 
-            <div className="flex flex-wrap gap-6 text-sm">
+            <div className="flex flex-wrap gap-3 sm:gap-6 text-xs sm:text-sm">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="flex items-center gap-1">
                   <span>🎯</span>
@@ -315,8 +315,8 @@ export function HostedGameManagementModal({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
+            <div className="flex items-start sm:items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mt-0.5 sm:mt-0 flex-shrink-0" />
               {(() => {
                 const locationDisplay = formatLocationForDisplay(currentGame.location)
                 if (locationDisplay.isLink && locationDisplay.url) {
@@ -325,32 +325,32 @@ export function HostedGameManagementModal({
                       href={locationDisplay.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1"
+                      className="text-green-600 hover:text-green-700 hover:underline flex items-center gap-1 text-xs sm:text-sm break-words"
                     >
-                      {locationDisplay.text}
-                      <ExternalLink className="h-3 w-3" />
+                      <span className="break-words">{locationDisplay.text}</span>
+                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
                     </a>
                   )
                 }
-                return <span>{locationDisplay.text}</span>
+                return <span className="text-xs sm:text-sm break-words">{locationDisplay.text}</span>
               })()}
             </div>
           </div>
 
-          <div className={`grid gap-6 ${isCurrentUserHost ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
+          <div className={`grid gap-4 sm:gap-6 ${isCurrentUserHost ? 'lg:grid-cols-3' : 'lg:grid-cols-1'}`}>
             {/* Players Section */}
             <div className={isCurrentUserHost ? 'lg:col-span-2' : ''}>
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-lg">Players</h4>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Users className="h-4 w-4" />
-                    <span className="text-sm">
-                      {((currentGame.registeredPlayers?.length || 0) + 1)} / {currentGame.maxPlayers || ((currentGame.seatsLeft || 0) + (currentGame.registeredPlayers?.length || 0) + 1)} players
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                  <h4 className="font-bold text-base sm:text-lg">Players</h4>
+                  <div className="flex items-center gap-1 sm:gap-2 text-gray-600">
+                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm">
+                      {((currentGame.registeredPlayers?.length || 0) + 1)} / {currentGame.maxPlayers || ((currentGame.seatsLeft || 0) + (currentGame.registeredPlayers?.length || 0) + 1)}
                     </span>
                   </div>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {isLoadingGame ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-green-600" />
@@ -359,9 +359,9 @@ export function HostedGameManagementModal({
                     <>
                       {/* Host at the top */}
                       {currentGame.hostName && (
-                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2 border-yellow-200">
+                        <div className="flex items-center justify-between p-2 sm:p-3 bg-white rounded-lg border-2 border-yellow-200">
                           <div
-                            className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                            className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-gray-50 p-1 sm:p-2 rounded flex-1 min-w-0"
                             onClick={() => {
                               // Create a host player object for the click handler
                               const hostPlayer: any = {
@@ -381,25 +381,25 @@ export function HostedGameManagementModal({
                                 alt={currentGame.hostName}
                                 width={40}
                                 height={40}
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0"
                               />
                             ) : (
-                              <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
                                 <span className="text-white text-xs font-bold">{currentGame.hostName?.charAt(0)}</span>
                               </div>
                             )}
-                            <div className="flex items-center gap-2">
-                              <div>
-                                <div className="font-medium flex items-center gap-2 flex-wrap">
-                                  {currentGame.hostName}
-                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 text-xs flex items-center gap-1">
-                                    <Crown className="h-3 w-3" />
-                                    Host
+                            <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium text-sm sm:text-base flex items-center gap-1 sm:gap-2 flex-wrap">
+                                  <span className="truncate">{currentGame.hostName}</span>
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 text-xs flex items-center gap-1 flex-shrink-0">
+                                    <Crown className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                    <span className="hidden sm:inline">Host</span>
                                   </Badge>
                                   {currentGame.hostId && hasPlayerAttended(currentGame.hostId) && (
-                                    <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs flex items-center gap-1">
-                                      <CheckCircle2 className="h-3 w-3" />
-                                      Attended
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs flex items-center gap-1 flex-shrink-0">
+                                      <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                      <span className="hidden sm:inline">Attended</span>
                                     </Badge>
                                   )}
                                 </div>
@@ -419,9 +419,9 @@ export function HostedGameManagementModal({
                             })
                           ).values()
                         ).map((player: any) => (
-                          <div key={player.id || player.userId} className="flex items-center justify-between p-3 bg-white rounded-lg">
+                          <div key={player.id || player.userId} className="flex items-center justify-between p-2 sm:p-3 bg-white rounded-lg gap-2">
                         <div
-                          className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                          className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-gray-50 p-1 sm:p-2 rounded flex-1 min-w-0"
                           onClick={() => handlePlayerClick(player)}
                         >
                           {player.image ? (
@@ -430,25 +430,25 @@ export function HostedGameManagementModal({
                               alt={player.name}
                               width={40}
                               height={40}
-                              className="w-10 h-10 rounded-full object-cover"
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0"
                             />
                           ) : (
-                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                               <span className="text-white text-xs font-bold">{player.name.charAt(0)}</span>
                             </div>
                           )}
-                          <div>
-                            <div className="font-medium flex items-center gap-2 flex-wrap">
-                              {player.name}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm sm:text-base flex items-center gap-1 sm:gap-2 flex-wrap">
+                              <span className="truncate">{player.name}</span>
                               {hasPlayerAttended(player.userId || player.id) && (
-                                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs flex items-center gap-1">
-                                  <CheckCircle2 className="h-3 w-3" />
-                                  Attended
+                                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs flex items-center gap-1 flex-shrink-0">
+                                  <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                  <span className="hidden sm:inline">Attended</span>
                                 </Badge>
                               )}
                             </div>
                             {(player.age || player.skillLevel) && (
-                              <div className="text-sm text-gray-600">
+                              <div className="text-xs sm:text-sm text-gray-600 truncate">
                                 {player.age && `${player.age} years`}
                                 {player.age && player.skillLevel && ' • '}
                                 {player.skillLevel && player.skillLevel}
@@ -458,12 +458,12 @@ export function HostedGameManagementModal({
                         </div>
                         {/* Only show action buttons if user is host */}
                         {isCurrentUserHost && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                             {onTransferHost && (
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 w-8 p-0 text-yellow-600 hover:bg-yellow-100"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-yellow-600 hover:bg-yellow-100"
                               onClick={async (e) => {
                                 e.stopPropagation()
                                 const confirmed = await confirm(`Transfer host ownership to ${player.name}? You will become a regular player and can then leave the game.`, {
@@ -484,13 +484,13 @@ export function HostedGameManagementModal({
                               }}
                                 title="Transfer host ownership"
                               >
-                                <Crown className="h-4 w-4" />
+                                <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                               </Button>
                             )}
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 w-8 p-0 text-red-600 hover:bg-red-100"
+                              className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-600 hover:bg-red-100"
                               onClick={async (e) => {
                                 e.stopPropagation()
                                 // Use userId if available, otherwise use id (which should be userId)
@@ -503,7 +503,7 @@ export function HostedGameManagementModal({
                               }}
                               title="Remove player"
                             >
-                              <X className="h-4 w-4" />
+                              <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </Button>
                           </div>
                         )}
@@ -523,25 +523,25 @@ export function HostedGameManagementModal({
 
             {/* Join Requests Section - Only visible to host */}
             {isCurrentUserHost && (
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-lg">JOIN REQUESTS</h4>
-                  <div className="flex items-center gap-2 text-green-600">
-                    <Users className="h-4 w-4" />
-                    <span className="text-sm font-medium">{currentGame.seatsLeft || 0} seats left</span>
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+                  <h4 className="font-bold text-base sm:text-lg">JOIN REQUESTS</h4>
+                  <div className="flex items-center gap-1 sm:gap-2 text-green-600">
+                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="text-xs sm:text-sm font-medium">{currentGame.seatsLeft || 0} seats left</span>
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-2 sm:space-y-4">
                   {isLoadingGame ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin text-green-600" />
                     </div>
                   ) : currentGame.joinRequests && currentGame.joinRequests.length > 0 ? (
                     currentGame.joinRequests.map((request: any) => (
-                      <div key={request.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors">
+                      <div key={request.id} className="flex items-center justify-between p-2 sm:p-3 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors gap-2">
                         <div
-                          className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded flex-1"
+                          className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-gray-50 p-1 sm:p-2 rounded flex-1 min-w-0"
                           onClick={() => handlePlayerClick(request)}
                         >
                           {request.userImage ? (
@@ -550,16 +550,16 @@ export function HostedGameManagementModal({
                               alt={request.userName || request.name}
                               width={40}
                               height={40}
-                              className="w-10 h-10 rounded-full object-cover"
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0"
                             />
                           ) : (
-                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
                               <span className="text-white text-xs font-bold">{(request.userName || request.name || 'U').charAt(0).toUpperCase()}</span>
                             </div>
                           )}
-                          <div>
-                            <div className="font-medium">{request.userName || request.name || 'Unknown User'}</div>
-                            <div className="text-sm text-gray-600">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm sm:text-base truncate">{request.userName || request.name || 'Unknown User'}</div>
+                            <div className="text-xs sm:text-sm text-gray-600 truncate">
                               {request.userAge && `${request.userAge} years`}
                               {request.userAge && request.userSkillLevel && ' • '}
                               {request.userSkillLevel && request.userSkillLevel}
@@ -568,10 +568,10 @@ export function HostedGameManagementModal({
                           </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                           <Button
                             size="sm"
-                            className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 bg-green-600 hover:bg-green-700"
                             onClick={async () => {
                               await onAcceptRequest(currentGame.id, request.id)
                               // Refresh game data after accepting
@@ -579,12 +579,12 @@ export function HostedGameManagementModal({
                             }}
                             title="Accept request"
                           >
-                            <Check className="h-4 w-4" />
+                            <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
                           <Button
                             size="sm"
                             variant="destructive"
-                            className="h-8 w-8 p-0"
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                             onClick={async () => {
                               await onRejectRequest(currentGame.id, request.id)
                               // Refresh game data after rejecting
@@ -592,7 +592,7 @@ export function HostedGameManagementModal({
                             }}
                             title="Reject request"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
                       </div>
@@ -618,25 +618,25 @@ export function HostedGameManagementModal({
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-4 border-t">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               {/* Game Completed button - shown when game is completed */}
               {isGameCompleted && isCurrentUserHost && (
                 <Button 
-                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 w-full sm:w-auto text-sm sm:text-base"
                   disabled
                 >
-                  <Trophy className="h-4 w-4" />
+                  <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Game Completed
                 </Button>
               )}
               {/* Mark Attendance button - only visible to host when game is not completed */}
               {canMarkAttendance && !isGameCompleted && (
                 <Button 
-                  className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                  className="bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2 w-full sm:w-auto text-sm sm:text-base"
                   onClick={() => setShowAttendanceModal(true)}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Mark Attendance
                 </Button>
               )}
@@ -644,23 +644,23 @@ export function HostedGameManagementModal({
               {isCurrentUserHost && onEdit && !isGameCompleted && (
                 <Button 
                   variant="outline" 
-                  className="flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 w-full sm:w-auto text-sm sm:text-base"
                   onClick={() => {
                     onEdit(currentGame)
                     onClose()
                   }}
                 >
-                  <Edit className="h-4 w-4" />
+                  <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Edit Game
                 </Button>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               {/* Show Leave button for players (including old host who transferred) */}
               {(isCurrentUserPlayer || isCurrentUserHost) && (
                 <Button 
                   variant="destructive" 
-                  className="bg-red-600 hover:bg-red-700"
+                  className="bg-red-600 hover:bg-red-700 w-full sm:w-auto text-sm sm:text-base"
                   disabled={!!(isCurrentUserHost && (currentGame.registeredPlayers?.length || 0) > 0)}
                   onClick={handleLeaveGame}
                   title={isCurrentUserHost && (currentGame.registeredPlayers?.length || 0) > 0 
@@ -674,7 +674,7 @@ export function HostedGameManagementModal({
               {isCurrentUserHost && onDeleteGame && (
                 <Button 
                   variant="destructive" 
-                  className="bg-red-600 hover:bg-red-700"
+                  className="bg-red-600 hover:bg-red-700 w-full sm:w-auto text-sm sm:text-base"
                   onClick={async () => {
                     const confirmed = await confirm('Are you sure you want to delete this game?', {
                       title: 'Delete Game',

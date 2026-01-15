@@ -3,6 +3,9 @@ import connectDB from '@/lib/db/mongodb';
 import PrivacyPolicy, { getPrivacyPolicy } from '@/lib/db/models/PrivacyPolicy';
 import { requireAuth } from '@/lib/auth';
 
+// Force dynamic rendering (uses headers for auth)
+export const dynamic = 'force-dynamic';
+
 // GET /api/admin/privacy-policy - Get privacy policy (admin only)
 export async function GET(request: NextRequest) {
   try {

@@ -38,7 +38,12 @@ export function CompletedGameDetailsModal({
   
   // Update currentGame when game prop changes
   useEffect(() => {
-    setCurrentGame(game)
+    const gameData = { ...game } as any
+    // Normalize time fields: ensure both time and startTime are set
+    if (gameData.startTime && !gameData.time) {
+      gameData.time = gameData.startTime
+    }
+    setCurrentGame(gameData)
   }, [game])
 
   // Get all players (host + registered players)
@@ -206,12 +211,24 @@ export function CompletedGameDetailsModal({
                   <span>Date: {formatDate(currentGame.date)}</span>
                 </div>
 
-                {currentGame.time && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>Time: {formatTime(currentGame.time)} {currentGame.endTime && `- ${formatTime(currentGame.endTime)}`}</span>
-                  </div>
-                )}
+                {(() => {
+                  const startTime = currentGame.time || (currentGame as any).startTime
+                  const endTime = currentGame.endTime
+                  if (!startTime && !endTime) return null
+                  
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>Time: {startTime 
+                        ? (endTime 
+                            ? `${formatTime(startTime)} - ${formatTime(endTime)}`
+                            : formatTime(startTime))
+                        : (endTime 
+                            ? `Until ${formatTime(endTime)}`
+                            : 'Time not set')}</span>
+                    </div>
+                  )
+                })()}
 
                 {(currentGame as any).completedAt && (
                   <div className="flex items-center gap-2">

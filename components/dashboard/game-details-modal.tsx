@@ -30,7 +30,12 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
 
   // Update current game when prop changes
   useEffect(() => {
-    setCurrentGame(game)
+    const gameData = { ...game } as any
+    // Normalize time fields: ensure both time and startTime are set
+    if (gameData.startTime && !gameData.time) {
+      gameData.time = gameData.startTime
+    }
+    setCurrentGame(gameData)
   }, [game])
 
   // Refresh game data when modal opens
@@ -45,9 +50,14 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
     try {
       const response = await getGameById(game.id)
       if (response.success && response.data) {
-        setCurrentGame(response.data as any)
+        const gameData = response.data as any
+        // Normalize time fields: ensure both time and startTime are set
+        if (gameData.startTime && !gameData.time) {
+          gameData.time = gameData.startTime
+        }
+        setCurrentGame(gameData)
         if (onGameUpdated) {
-          onGameUpdated(response.data as any)
+          onGameUpdated(gameData)
         }
       }
     } catch (error) {
@@ -205,20 +215,26 @@ export function GameDetailsModal({ game, isOpen, onClose, onReport, onGameUpdate
                   <span>Date: {formatDate(currentGame.date)}</span>
                 </div>
 
-                {(currentGame.time || currentGame.endTime) && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                      {currentGame.time 
-                        ? (currentGame.endTime 
-                            ? `${formatTime(currentGame.time)} - ${formatTime(currentGame.endTime)}`
-                            : formatTime(currentGame.time))
-                        : (currentGame.endTime 
-                            ? `Until ${formatTime(currentGame.endTime)}`
-                            : 'Time not set')}
-                    </span>
-                  </div>
-                )}
+                {(() => {
+                  const startTime = currentGame.time || (currentGame as any).startTime
+                  const endTime = currentGame.endTime
+                  if (!startTime && !endTime) return null
+                  
+                  return (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>
+                        {startTime 
+                          ? (endTime 
+                              ? `${formatTime(startTime)} - ${formatTime(endTime)}`
+                              : formatTime(startTime))
+                          : (endTime 
+                              ? `Until ${formatTime(endTime)}`
+                              : 'Time not set')}
+                      </span>
+                    </div>
+                  )
+                })()}
               </div>
 
               <div className="flex items-start sm:items-center gap-2">

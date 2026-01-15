@@ -111,7 +111,12 @@ export function HostedGameManagementModal({
 
   // Update current game when prop changes
   useEffect(() => {
-    setCurrentGame(game)
+    const gameData = { ...game } as any
+    // Normalize time fields: ensure both time and startTime are set
+    if (gameData.startTime && !gameData.time) {
+      gameData.time = gameData.startTime
+    }
+    setCurrentGame(gameData)
   }, [game])
 
   const fetchGameData = async () => {
@@ -119,10 +124,15 @@ export function HostedGameManagementModal({
     try {
       const response = await getGameById(game.id)
       if (response.success && response.data) {
-        setCurrentGame(response.data)
+        const gameData = response.data as any
+        // Normalize time fields: ensure both time and startTime are set
+        if (gameData.startTime && !gameData.time) {
+          gameData.time = gameData.startTime
+        }
+        setCurrentGame(gameData)
         // Notify parent component of updated game data
         if (onGameUpdated) {
-          onGameUpdated(response.data)
+          onGameUpdated(gameData)
         }
       }
     } catch (error) {
@@ -311,7 +321,16 @@ export function HostedGameManagementModal({
 
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                <span>Time: {formatTime(currentGame.time)} {currentGame.endTime && `- ${formatTime(currentGame.endTime)}`}</span>
+                <span>Time: {(() => {
+                  const startTime = currentGame.time || (currentGame as any).startTime
+                  if (!startTime && !currentGame.endTime) return 'Time not set'
+                  if (startTime && currentGame.endTime) {
+                    return `${formatTime(startTime)} - ${formatTime(currentGame.endTime)}`
+                  }
+                  if (startTime) return formatTime(startTime)
+                  if (currentGame.endTime) return `Until ${formatTime(currentGame.endTime)}`
+                  return 'Time not set'
+                })()}</span>
               </div>
             </div>
 

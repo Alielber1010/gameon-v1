@@ -45,6 +45,7 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
   const [locationCoordinates, setLocationCoordinates] = useState<{ lat: number; lng: number } | null>(null)
   const [isProcessingLocation, setIsProcessingLocation] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
+  const [isLocationValidated, setIsLocationValidated] = useState(false)
   const [citySuggestions, setCitySuggestions] = useState<LocationSuggestion[]>([])
   const [showCitySuggestions, setShowCitySuggestions] = useState(false)
   const [isSearchingCity, setIsSearchingCity] = useState(false)
@@ -211,11 +212,22 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
       // Format date as ISO string
       const dateISO = formData.date ? formData.date.toISOString().split('T')[0] : ''
 
-      // Validate that we have coordinates from Google Maps link
-      if (!locationCoordinates) {
-        setError("Please provide a valid Google Maps link with coordinates")
-        setIsLoading(false)
-        return
+      // Validate location: for mobile links, check isLocationValidated; for web links, check coordinates
+      const isMobileLink = formData.location.includes('app') || formData.location.includes('maps.app.goo.gl')
+      if (isMobileLink) {
+        // Mobile link: require validation (city extracted)
+        if (!isLocationValidated) {
+          setError("Please provide a valid Google Maps link")
+          setIsLoading(false)
+          return
+        }
+      } else {
+        // Web link: require coordinates
+        if (!locationCoordinates) {
+          setError("Please provide a valid Google Maps link with coordinates")
+          setIsLoading(false)
+          return
+        }
       }
 
       // Upload image if selected
@@ -238,7 +250,7 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
         address: formData.location, // Store the Google Maps link
         city: formData.city || undefined,
         country: formData.country || undefined,
-        coordinates: locationCoordinates,
+        coordinates: locationCoordinates || undefined, // Optional for mobile links
       }
 
       // Prepare API payload
@@ -399,6 +411,7 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
     setFormData((prev) => ({ ...prev, location: value }))
     setLocationError(null)
     setLocationCoordinates(null)
+    setIsLocationValidated(false)
 
     // Validate Google Maps link
     if (!value.trim()) {
@@ -415,39 +428,94 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
     try {
       const linkData = await extractCoordinatesFromGoogleMapsLink(value)
       
+      // Check if it's a mobile link (contains "app" in the URL)
+      const isMobileLink = value.includes('maps.app.goo.gl') || value.includes('app')
+      
+      // For mobile links: only require city (coordinates are optional)
+      // For web links: require coordinates
       if (!linkData || !linkData.isValid) {
-        setLocationError("Could not extract coordinates from this link. Please use a Google Maps link with coordinates (e.g., https://www.google.com/maps?q=lat,lng)")
+        setLocationError(
+          linkData?.error ||
+            "Could not extract location information from this link. Please try sharing the location again."
+        )
         setIsProcessingLocation(false)
         return
       }
 
-      setLocationCoordinates(linkData.coordinates)
-      
-      // Try to get address from coordinates via reverse geocoding
-      try {
-        const geocodeResult = await reverseGeocode(linkData.coordinates.lat, linkData.coordinates.lng)
-        if (geocodeResult) {
-          setFormData((prev) => ({
-            ...prev,
-            city: geocodeResult.city || prev.city,
-            country: geocodeResult.country || prev.country,
-          }))
-          // If we successfully got city/country, don't show suggestions
-          if (geocodeResult.city && geocodeResult.country) {
-            setShowCitySuggestions(false)
-          }
-        } else {
-          // Reverse geocoding failed - clear city so user can use autocomplete
-          setFormData((prev) => ({
-            ...prev,
-            city: prev.city || "", // Keep existing if user already typed something
-            country: prev.country || "",
-          }))
+      if (isMobileLink) {
+        // Mobile link: city is required, coordinates are optional
+        if (!linkData.city) {
+          setLocationError(
+            linkData?.error ||
+              "Could not extract city information from this link. Please try sharing the location again."
+          )
+          setIsProcessingLocation(false)
+          setIsLocationValidated(false)
+          return
         }
-      } catch (error) {
-        console.error("Reverse geocoding error:", error)
-        // Don't fail if reverse geocoding fails, coordinates are enough
-        // User can manually enter city with autocomplete
+        // Set coordinates if available, otherwise null
+        setLocationCoordinates(linkData.coordinates || null)
+        // Mark as validated since we have city
+        setIsLocationValidated(true)
+      } else {
+        // Web link: coordinates are required
+        if (!linkData.coordinates) {
+          setLocationError(
+            linkData?.error ||
+              "Could not extract coordinates from this link. Please use a Google Maps link with coordinates (e.g., https://www.google.com/maps?q=lat,lng)"
+          )
+          setIsProcessingLocation(false)
+          setIsLocationValidated(false)
+          return
+        }
+        setLocationCoordinates(linkData.coordinates)
+        setIsLocationValidated(true)
+      }
+
+      // For mobile links: keep the original mobile link (unwrapped URL is only for validation)
+      // For web links: store the canonical URL if it was resolved
+      if (!isMobileLink && linkData.resolvedUrl && linkData.resolvedUrl !== value) {
+        setFormData((prev) => ({
+          ...prev,
+          location: linkData.resolvedUrl as string,
+        }))
+      }
+      // For mobile links, the original link (value) is already in formData.location, so we don't change it
+      
+      // Step 1: Use city and country extracted from URL (if available)
+      if (linkData.city || linkData.country) {
+        setFormData((prev) => ({
+          ...prev,
+          city: linkData.city || prev.city,
+          country: linkData.country || prev.country,
+        }))
+        // If we got city/country from URL, don't show suggestions
+        if (linkData.city && linkData.country) {
+          setShowCitySuggestions(false)
+        }
+      }
+      
+      // Step 2: Fallback to reverse geocoding if city/country not extracted from URL
+      // Only do this for web links (mobile links already have city/country from URL)
+      if (!isMobileLink && (!linkData.city || !linkData.country) && linkData.coordinates) {
+        try {
+          const geocodeResult = await reverseGeocode(linkData.coordinates.lat, linkData.coordinates.lng)
+          if (geocodeResult) {
+            setFormData((prev) => ({
+              ...prev,
+              city: linkData.city || geocodeResult.city || prev.city,
+              country: linkData.country || geocodeResult.country || prev.country,
+            }))
+            // If we successfully got city/country, don't show suggestions
+            if ((linkData.city || geocodeResult.city) && (linkData.country || geocodeResult.country)) {
+              setShowCitySuggestions(false)
+            }
+          }
+        } catch (error) {
+          console.error("Reverse geocoding error:", error)
+          // Don't fail if reverse geocoding fails, coordinates are enough
+          // User can manually enter city with autocomplete
+        }
       }
       
       setLocationError(null)
@@ -589,7 +657,7 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
                 {isProcessingLocation && (
                   <Loader2 className="h-3 w-3 animate-spin text-gray-400 ml-2" />
                 )}
-                {locationCoordinates && !isProcessingLocation && (
+                {(locationCoordinates || isLocationValidated) && !isProcessingLocation && (
                   <span className="text-xs text-green-600 ml-2">✓ Location found</span>
                 )}
               </Label>

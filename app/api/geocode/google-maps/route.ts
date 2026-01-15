@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * API endpoint to resolve shortened Google Maps URLs
- * This is needed because shortened URLs (goo.gl, maps.app.goo.gl) require
- * following redirects which can't be done client-side due to CORS
+ * API endpoint to resolve shortened Google Maps URLs (maps.app.goo.gl)
+ * Follows redirects to get the canonical google.com/maps URL
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,33 +30,40 @@ export async function POST(request: NextRequest) {
       urlToFetch = 'https://' + urlToFetch
     }
 
-    // Follow redirects to get the full URL
-    // Use GET instead of HEAD as some redirects don't work with HEAD
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+    }
+
+    // Follow redirects automatically (max 10 redirects)
     const response = await fetch(urlToFetch, {
       method: 'GET',
       redirect: 'follow',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
+      headers,
     })
 
     if (!response.ok) {
-      console.error('Failed to resolve URL:', response.status, response.statusText)
       return NextResponse.json(
         { success: false, error: `Failed to resolve URL: ${response.statusText}` },
         { status: 400 }
       )
     }
 
-    // Get the final URL after redirects
+    // Get the final URL after all redirects
     const finalUrl = response.url
 
-    // Verify the resolved URL is actually a Google Maps URL
+    // Log the unwrapped canonical URL for debugging
+    console.log('[Google Maps Resolver] Original:', urlToFetch)
+    console.log('[Google Maps Resolver] Unwrapped Canonical URL:', finalUrl)
+
+    // Safety validation - ensure it's a Google Maps URL
     if (!finalUrl.includes('google.com/maps') && !finalUrl.includes('maps.google.com')) {
-      console.warn('Resolved URL is not a Google Maps URL:', finalUrl)
-      // Still return it, but log a warning
+      console.warn('[Google Maps Resolver] Resolved URL is not a Google Maps link:', finalUrl)
+      return NextResponse.json(
+        { success: false, error: 'Resolved URL is not a valid Google Maps link' },
+        { status: 400 }
+      )
     }
 
     return NextResponse.json({
@@ -75,11 +81,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-
-
-
-
-
-
-

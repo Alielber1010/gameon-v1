@@ -54,6 +54,7 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const cityInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const locationDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
   // Sport mapping: API value -> Display name (for backward compatibility)
   // Since we're now using the sport value directly, we don't need a mapping
@@ -406,14 +407,28 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
     }
   }, [showCitySuggestions])
 
-  // Handle Google Maps link input
+  // Cleanup debounce timer on unmount or modal close
+  useEffect(() => {
+    return () => {
+      if (locationDebounceRef.current) {
+        clearTimeout(locationDebounceRef.current)
+      }
+    }
+  }, [isOpen])
+
+  // Handle Google Maps link input with debouncing to prevent excessive API calls
   const handleLocationLinkChange = async (value: string) => {
     setFormData((prev) => ({ ...prev, location: value }))
     setLocationError(null)
     setLocationCoordinates(null)
     setIsLocationValidated(false)
 
-    // Validate Google Maps link
+    // Clear previous debounce timer
+    if (locationDebounceRef.current) {
+      clearTimeout(locationDebounceRef.current)
+    }
+
+    // Validate Google Maps link format immediately (no debounce needed)
     if (!value.trim()) {
       return
     }
@@ -423,10 +438,12 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
       return
     }
 
-    // Extract coordinates from the link
-    setIsProcessingLocation(true)
-    try {
-      const linkData = await extractCoordinatesFromGoogleMapsLink(value)
+    // Debounce the API call - wait 800ms after user stops typing
+    locationDebounceRef.current = setTimeout(async () => {
+      // Extract coordinates from the link
+      setIsProcessingLocation(true)
+      try {
+        const linkData = await extractCoordinatesFromGoogleMapsLink(value)
       
       // Check if it's a mobile link (contains "app" in the URL)
       const isMobileLink = value.includes('maps.app.goo.gl') || value.includes('app')
@@ -519,12 +536,13 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
       }
       
       setLocationError(null)
-    } catch (error) {
-      console.error("Error processing Google Maps link:", error)
-      setLocationError("Error processing the link. Please check the format and try again.")
-    } finally {
-      setIsProcessingLocation(false)
-    }
+      } catch (error) {
+        console.error("Error processing Google Maps link:", error)
+        setLocationError("Error processing the link. Please check the format and try again.")
+      } finally {
+        setIsProcessingLocation(false)
+      }
+    }, 800) // 800ms debounce delay
   }
 
   return (

@@ -29,7 +29,7 @@ export function transformGameForFrontend(
 
   // Format date/time for frontend
   const dateObj = new Date(dbGame.date);
-  const formattedDate = dateObj.toISOString().split('T')[0]; // "2025-01-15"
+  const formattedDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
   const isToday = dateObj.toDateString() === new Date().toDateString();
 
   return {

@@ -19,7 +19,7 @@ import { useGames } from "@/hooks/use-games"
 // Transform API game data to frontend Game type
 function transformApiGameToGame(apiGame: any): Game {
   const dateObj = new Date(apiGame.date);
-  const formattedDate = dateObj.toISOString().split('T')[0];
+  const formattedDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
   const isToday = dateObj.toDateString() === new Date().toDateString();
   
   return {

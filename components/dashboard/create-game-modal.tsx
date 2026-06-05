@@ -208,8 +208,9 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
       // Transform skill level to lowercase API format
       const apiSkillLevel = skillLevelMap[formData.skillLevel] || formData.skillLevel.toLowerCase()
 
-      // Format date as ISO string
-      const dateISO = formData.date ? formData.date.toISOString().split('T')[0] : ''
+      // Format date using LOCAL timezone so e.g. UTC+8 picks June 5, not June 4
+      const d = formData.date!
+      const dateISO = formData.date ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : ''
 
       // Validate location: for mobile links, check isLocationValidated; for web links, check coordinates
       const isMobileLink = formData.location.includes('app') || formData.location.includes('maps.app.goo.gl')

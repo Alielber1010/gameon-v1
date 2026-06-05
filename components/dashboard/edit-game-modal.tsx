@@ -333,7 +333,8 @@ export function EditGameModal({ isOpen, onClose, game, onSuccess }: EditGameModa
       }
 
       const apiSkillLevel = skillLevelMap[formData.skillLevel] || formData.skillLevel.toLowerCase()
-      const dateISO = formData.date.toISOString().split('T')[0]
+      const d = formData.date
+      const dateISO = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 
       let imageUrl = game.image || "/placeholder.svg?height=200&width=300"
       if (selectedImage) {

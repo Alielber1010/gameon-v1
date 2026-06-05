@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const [selectedTimings, setSelectedTimings] = useState<string[]>([])
   const [location, setLocation] = useState("") // Default: "Everywhere" (empty = no filter)
   const [city, setCity] = useState<string>("") // Extracted city for API filtering
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showFilterModal, setShowFilterModal] = useState(false)
 
@@ -92,6 +93,8 @@ export default function DashboardPage() {
     setLocation(newLocation)
     const extractedCity = extractCityFromLocation(newLocation)
     setCity(extractedCity)
+    // Clear coordinates if user edits the text manually
+    setLocationCoords(null)
   }
 
   // Handle city change (from search bar autocomplete)
@@ -99,11 +102,25 @@ export default function DashboardPage() {
     setCity(newCity)
   }
 
-  // Fetch games from API with city filter
+  // Handle full location selection (suggestion or GPS) — includes coordinates
+  const handleLocationSelect = (suggestion: import("@/lib/utils/geocoding").LocationSuggestion | null) => {
+    if (!suggestion) {
+      setLocationCoords(null)
+      return
+    }
+    setLocationCoords(suggestion.coordinates)
+    const cityName = suggestion.city || suggestion.displayName.split(',')[0]?.trim() || ""
+    setCity(cityName)
+  }
+
+  // Fetch games from API with location filter (coordinates-based when available, city name as fallback)
   const { games: apiGames, loading, error, refetch } = useGames({
-    status: 'upcoming', // Only show upcoming games by default
-    limit: 50, // Get more games for filtering
-    city: city || undefined, // Only filter by city if city is set
+    status: 'upcoming',
+    limit: 50,
+    city: city || undefined,
+    lat: locationCoords?.lat,
+    lng: locationCoords?.lng,
+    radius: 25, // 25 km radius around selected location
   });
 
   // Transform API games to frontend format
@@ -176,6 +193,7 @@ export default function DashboardPage() {
             location={location}
             onLocationChange={handleLocationChange}
             onCityChange={handleCityChange}
+            onLocationSelect={handleLocationSelect}
           />
         </div>
         <Button

@@ -54,6 +54,7 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
   const cityInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const locationDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const locationAbortRef = useRef<AbortController | null>(null)
 
   // Sport mapping: API value -> Display name (for backward compatibility)
   // Since we're now using the sport value directly, we don't need a mapping
@@ -404,12 +405,11 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
     }
   }, [showCitySuggestions])
 
-  // Cleanup debounce timer on unmount or modal close
+  // Cleanup debounce timer and abort any in-flight request on unmount or modal close
   useEffect(() => {
     return () => {
-      if (locationDebounceRef.current) {
-        clearTimeout(locationDebounceRef.current)
-      }
+      if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current)
+      if (locationAbortRef.current) locationAbortRef.current.abort()
     }
   }, [isOpen])
 
@@ -420,12 +420,16 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
     setLocationCoordinates(null)
     setIsLocationValidated(false)
 
-    // Clear previous debounce timer
+    // Abort any in-flight request and reset loading immediately
+    if (locationAbortRef.current) {
+      locationAbortRef.current.abort()
+      locationAbortRef.current = null
+    }
     if (locationDebounceRef.current) {
       clearTimeout(locationDebounceRef.current)
     }
+    setIsProcessingLocation(false)
 
-    // Validate Google Maps link format immediately (no debounce needed)
     if (!value.trim()) {
       return
     }
@@ -437,10 +441,13 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
 
     // Debounce the API call - wait 800ms after user stops typing
     locationDebounceRef.current = setTimeout(async () => {
-      // Extract coordinates from the link
+      const controller = new AbortController()
+      locationAbortRef.current = controller
+      // Auto-cancel after 15s in case the server hangs
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
       setIsProcessingLocation(true)
       try {
-        const linkData = await extractCoordinatesFromGoogleMapsLink(value)
+        const linkData = await extractCoordinatesFromGoogleMapsLink(value, controller.signal)
       
       // Check if it's a mobile link (contains "app" in the URL)
       const isMobileLink = value.includes('maps.app.goo.gl') || value.includes('app')
@@ -533,10 +540,14 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
       }
       
       setLocationError(null)
-      } catch (error) {
-        console.error("Error processing Google Maps link:", error)
-        setLocationError("Error processing the link. Please check the format and try again.")
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          console.error("Error processing Google Maps link:", error)
+          setLocationError("Error processing the link. Please check the format and try again.")
+        }
       } finally {
+        clearTimeout(timeoutId)
+        locationAbortRef.current = null
         setIsProcessingLocation(false)
       }
     }, 800) // 800ms debounce delay

@@ -13,15 +13,17 @@ interface SearchBarProps {
   location: string
   onLocationChange: (location: string) => void
   onCityChange?: (city: string) => void
+  onLocationSelect?: (suggestion: LocationSuggestion | null) => void
 }
 
-export function SearchBar({ searchQuery, onSearchChange, location, onLocationChange, onCityChange }: SearchBarProps) {
+export function SearchBar({ searchQuery, onSearchChange, location, onLocationChange, onCityChange, onLocationSelect }: SearchBarProps) {
   const { alert } = useDialog()
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([])
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
   const locationInputRef = useRef<HTMLDivElement>(null)
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleGetCurrentLocation = async () => {
     if (!navigator.geolocation) {
@@ -36,22 +38,26 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
         try {
           const { latitude, longitude } = position.coords
           const result = await reverseGeocode(latitude, longitude)
-          
+
           if (result) {
-            // Use only the city name for location display
-            const locationToShow = result.city || result.formattedAddress || result.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-            
-            onLocationChange(locationToShow)
-            // Extract and notify city change
-            if (result.city && onCityChange) {
-              onCityChange(result.city)
+            const cityName = result.city || result.formattedAddress || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+            onLocationChange(cityName)
+            if (onCityChange) onCityChange(cityName)
+            if (onLocationSelect) {
+              onLocationSelect({
+                displayName: result.formattedAddress || cityName,
+                address: result.formattedAddress || cityName,
+                city: result.city,
+                state: result.state,
+                country: result.country,
+                coordinates: { lat: latitude, lng: longitude },
+              })
             }
           } else {
-            // Fallback to coordinates if reverse geocoding fails
-            onLocationChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
+            const fallback = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+            onLocationChange(fallback)
           }
-        } catch (error) {
-          console.error("Error reverse geocoding location:", error)
+        } catch {
           const { latitude, longitude } = position.coords
           onLocationChange(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
         } finally {
@@ -59,88 +65,77 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
         }
       },
       async (error) => {
-        console.error("Error getting location:", error)
         let errorMessage = "Unable to get your location."
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = "Location access denied. Please enable location permissions in your browser settings."
-            break
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = "Location information is unavailable."
-            break
-          case error.TIMEOUT:
-            errorMessage = "Location request timed out. Please try again."
-            break
-        }
-        
+        if (error.code === error.PERMISSION_DENIED)
+          errorMessage = "Location access denied. Please enable location permissions in your browser settings."
+        else if (error.code === error.POSITION_UNAVAILABLE)
+          errorMessage = "Location information is unavailable."
+        else if (error.code === error.TIMEOUT)
+          errorMessage = "Location request timed out. Please try again."
         await alert(errorMessage, "Location Error")
         setIsGettingLocation(false)
       }
     )
   }
 
-  // Handle location input with autocomplete
-  const handleLocationInputChange = async (value: string) => {
+  const handleLocationInputChange = (value: string) => {
     onLocationChange(value)
     setShowLocationSuggestions(true)
 
-    // Clear city if location is cleared
+    // Clear everything when input is cleared
     if (!value.trim()) {
-      if (onCityChange) {
-        onCityChange("")
-      }
+      if (onCityChange) onCityChange("")
+      if (onLocationSelect) onLocationSelect(null)
       setLocationSuggestions([])
       return
     }
 
-    // Extract city from typed location (format: "City, Country" or just "City")
-    // This allows manual typing to also set the city filter
-    const parts = value.split(',')
-    const extractedCity = parts[0]?.trim() || ""
-    if (extractedCity && onCityChange) {
-      onCityChange(extractedCity)
-    }
+    // While typing, filter by city name immediately (before suggestions load)
+    const typedCity = value.split(',')[0]?.trim() || ""
+    if (typedCity && onCityChange) onCityChange(typedCity)
+    // Clear coordinate-based filter while user is still typing
+    if (onLocationSelect) onLocationSelect(null)
 
-    // Only search if user has typed at least 2 characters
     if (value.length < 2) {
       setLocationSuggestions([])
       return
     }
 
-    setIsSearchingLocation(true)
-    try {
-      const suggestions = await searchLocations(value, 5)
-      setLocationSuggestions(suggestions)
-    } catch (error) {
-      console.error("Error searching locations:", error)
-      setLocationSuggestions([])
-    } finally {
-      setIsSearchingLocation(false)
-    }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(async () => {
+      setIsSearchingLocation(true)
+      try {
+        const suggestions = await searchLocations(value, 6)
+        setLocationSuggestions(suggestions)
+        if (suggestions.length > 0) setShowLocationSuggestions(true)
+      } catch {
+        setLocationSuggestions([])
+      } finally {
+        setIsSearchingLocation(false)
+      }
+    }, 300)
   }
 
-  // Handle location selection from autocomplete
   const handleLocationSelect = (suggestion: LocationSuggestion) => {
-    // Use only the city name for location display
-    const cityName = suggestion.city || suggestion.displayName.split(',')[0]?.trim() || suggestion.displayName
-    
-    onLocationChange(cityName)
-    
-    // Extract city and notify
-    if (suggestion.city && onCityChange) {
-      onCityChange(suggestion.city)
-    } else {
-      // Try to extract city from display name
-      const cityFromName = suggestion.displayName.split(',')[0]?.trim()
-      if (cityFromName && onCityChange) {
-        onCityChange(cityFromName)
-      }
-    }
-    
+    // Show just the city (and state if available) in the input
+    const cityName = suggestion.city || suggestion.displayName.split(',')[0]?.trim()
+    const displayText = suggestion.state && cityName !== suggestion.state
+      ? `${cityName}, ${suggestion.state}`
+      : cityName || suggestion.displayName.split(',')[0]?.trim()
+
+    onLocationChange(displayText || "")
+
+    if (onCityChange) onCityChange(cityName || "")
+    if (onLocationSelect) onLocationSelect(suggestion)
+
     setShowLocationSuggestions(false)
     setLocationSuggestions([])
   }
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current) }
+  }, [])
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -149,15 +144,10 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
         setShowLocationSuggestions(false)
       }
     }
-
-    if (showLocationSuggestions) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
+    if (showLocationSuggestions) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showLocationSuggestions])
+
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
       <div className="relative flex-1">
@@ -177,9 +167,7 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
             value={location}
             onChange={(e) => handleLocationInputChange(e.target.value)}
             onFocus={() => {
-              if (location.length >= 2) {
-                setShowLocationSuggestions(true)
-              }
+              if (location.length >= 2 && locationSuggestions.length > 0) setShowLocationSuggestions(true)
             }}
             className="border-0 bg-transparent text-gray-800 font-medium text-sm sm:text-base min-w-0"
             placeholder="Everywhere"
@@ -188,28 +176,30 @@ export function SearchBar({ searchQuery, onSearchChange, location, onLocationCha
             <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
           )}
           {showLocationSuggestions && locationSuggestions.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto top-full left-0">
-              {locationSuggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleLocationSelect(suggestion)}
-                  className="w-full text-left px-4 py-3 sm:py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none transition-colors min-h-[44px] touch-manipulation"
-                >
-                  <div className="font-medium text-gray-900 text-sm sm:text-base">
-                    {suggestion.city || suggestion.displayName.split(',')[0]}
-                  </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {suggestion.displayName}
-                  </div>
-                </button>
-              ))}
+            <div className="absolute z-50 w-64 sm:w-80 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-auto top-full left-0">
+              {locationSuggestions.map((suggestion, index) => {
+                const cityLabel = suggestion.city || suggestion.displayName.split(',')[0]?.trim()
+                const stateLabel = suggestion.state || ""
+                const countryLabel = suggestion.country || ""
+                const subtitle = [stateLabel, countryLabel].filter(Boolean).join(", ")
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => handleLocationSelect(suggestion)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors border-b border-gray-100 last:border-0 min-h-[44px] touch-manipulation"
+                  >
+                    <div className="font-medium text-gray-900 text-sm">{cityLabel}</div>
+                    {subtitle && <div className="text-xs text-gray-500 mt-0.5">{subtitle}</div>}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           className="text-gray-700 font-medium hover:bg-gray-300 min-h-[44px] px-3 sm:px-4 flex-shrink-0"
           onClick={handleGetCurrentLocation}
           disabled={isGettingLocation}

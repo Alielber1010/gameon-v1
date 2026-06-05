@@ -6,7 +6,10 @@ export interface GameFilters {
   sport?: string;
   status?: string;
   city?: string;
-  hostId?: string; // Filter by host user ID
+  lat?: number;   // Latitude for proximity search
+  lng?: number;   // Longitude for proximity search
+  radius?: number; // Radius in km (default 25)
+  hostId?: string;
   page?: number;
   limit?: number;
 }
@@ -59,6 +62,9 @@ export async function getGames(filters: GameFilters = {}): Promise<GameResponse>
     if (filters.sport) params.append('sport', filters.sport);
     if (filters.status) params.append('status', filters.status);
     if (filters.city) params.append('city', filters.city);
+    if (filters.lat != null) params.append('lat', filters.lat.toString());
+    if (filters.lng != null) params.append('lng', filters.lng.toString());
+    if (filters.radius != null) params.append('radius', filters.radius.toString());
     if (filters.hostId) params.append('hostId', filters.hostId);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());

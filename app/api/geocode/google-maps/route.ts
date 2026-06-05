@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
         })
 
         if (response.status === 429) {
-          // Rate limited - wait longer before retry
-          const retryAfter = parseInt(response.headers.get('Retry-After') || '60')
+          // Rate limited - wait before retry, capped at 5s to avoid long hangs
+          const retryAfter = Math.min(parseInt(response.headers.get('Retry-After') || '5'), 5)
           if (attempt < maxRetries - 1) {
             console.warn(`[Google Maps Resolver] Rate limited. Waiting ${retryAfter}s before retry...`)
             await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))

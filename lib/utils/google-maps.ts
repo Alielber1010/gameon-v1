@@ -242,7 +242,7 @@ async function extractCityCountry(url: string): Promise<{ city: string | null; c
  * Main function: Extracts all data from Google Maps link
  * Handles both shortened and canonical URLs
  */
-export async function extractCoordinatesFromGoogleMapsLink(url: string): Promise<GoogleMapsLinkData | null> {
+export async function extractCoordinatesFromGoogleMapsLink(url: string, signal?: AbortSignal): Promise<GoogleMapsLinkData | null> {
   if (!isValidGoogleMapsLink(url)) {
     return {
       isValid: false,
@@ -253,7 +253,7 @@ export async function extractCoordinatesFromGoogleMapsLink(url: string): Promise
   try {
     let cleanUrl = url.trim()
     let resolvedUrl: string | undefined = undefined
-    
+
     // Step 1: Resolve shortened URLs to canonical
     if (cleanUrl.includes('goo.gl/maps') || cleanUrl.includes('maps.app.goo.gl')) {
       try {
@@ -263,6 +263,7 @@ export async function extractCoordinatesFromGoogleMapsLink(url: string): Promise
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ url: cleanUrl }),
+          signal: signal ?? AbortSignal.timeout(15000),
         })
 
         if (!response.ok) {
@@ -364,7 +365,8 @@ export async function extractCoordinatesFromGoogleMapsLink(url: string): Promise
       isValid: true,
       resolvedUrl: resolvedUrl || cleanUrl,
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'AbortError') throw error
     console.error('Error extracting coordinates from Google Maps link:', error)
     return {
       isValid: false,

@@ -56,6 +56,7 @@ export function EditGameModal({ isOpen, onClose, game, onSuccess }: EditGameModa
   const cityInputRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const locationDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const locationAbortRef = useRef<AbortController | null>(null)
 
   const skillLevelMap: Record<string, string> = {
     "Beginner": "beginner",
@@ -229,7 +230,10 @@ export function EditGameModal({ isOpen, onClose, game, onSuccess }: EditGameModa
   }, [showCitySuggestions])
 
   useEffect(() => {
-    return () => { if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current) }
+    return () => {
+      if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current)
+      if (locationAbortRef.current) locationAbortRef.current.abort()
+    }
   }, [isOpen])
 
   // Handle Google Maps link input with debouncing
@@ -239,14 +243,25 @@ export function EditGameModal({ isOpen, onClose, game, onSuccess }: EditGameModa
     setLocationCoordinates(null)
     setIsLocationValidated(false)
 
+    // Abort any in-flight request and reset loading immediately
+    if (locationAbortRef.current) {
+      locationAbortRef.current.abort()
+      locationAbortRef.current = null
+    }
     if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current)
+    setIsProcessingLocation(false)
+
     if (!value.trim()) return
     if (!isValidGoogleMapsLink(value)) { setLocationError("Please enter a valid Google Maps link"); return }
 
     locationDebounceRef.current = setTimeout(async () => {
+      const controller = new AbortController()
+      locationAbortRef.current = controller
+      // Auto-cancel after 15s in case the server hangs
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
       setIsProcessingLocation(true)
       try {
-        const linkData = await extractCoordinatesFromGoogleMapsLink(value)
+        const linkData = await extractCoordinatesFromGoogleMapsLink(value, controller.signal)
         const isMobileLink = value.includes('maps.app.goo.gl') || value.includes('app')
 
         if (!linkData || !linkData.isValid) {
@@ -279,8 +294,15 @@ export function EditGameModal({ isOpen, onClose, game, onSuccess }: EditGameModa
           } catch { /* ignore */ }
         }
         setLocationError(null)
-      } catch { setLocationError("Error processing the link. Please check the format and try again.") }
-      finally { setIsProcessingLocation(false) }
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          setLocationError("Error processing the link. Please check the format and try again.")
+        }
+      } finally {
+        clearTimeout(timeoutId)
+        locationAbortRef.current = null
+        setIsProcessingLocation(false)
+      }
     }, 800)
   }
 

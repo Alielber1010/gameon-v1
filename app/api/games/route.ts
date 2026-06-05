@@ -19,11 +19,32 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
 
+    const lat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : null;
+    const lng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : null;
+    const radius = searchParams.get('radius') ? parseFloat(searchParams.get('radius')!) : 25; // km
+
     // Build query
     const query: any = {};
     if (sport) query.sport = sport;
     if (status) query.status = status;
-    if (city) query['location.city'] = { $regex: city, $options: 'i' };
+
+    // Location filter: prefer coordinate proximity, fall back to city name regex
+    if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
+      const latDelta = radius / 111;
+      const lngDelta = radius / (111 * Math.cos((lat * Math.PI) / 180));
+      const geoConditions: any[] = [
+        {
+          'location.coordinates.lat': { $gte: lat - latDelta, $lte: lat + latDelta },
+          'location.coordinates.lng': { $gte: lng - lngDelta, $lte: lng + lngDelta },
+        },
+      ];
+      // Also catch games that have no coordinates stored but match by city name
+      if (city) geoConditions.push({ 'location.city': { $regex: city, $options: 'i' } });
+      query.$or = geoConditions;
+    } else if (city) {
+      query['location.city'] = { $regex: city, $options: 'i' };
+    }
+
     if (hostId) {
       // Validate hostId is a valid ObjectId
       if (mongoose.Types.ObjectId.isValid(hostId)) {
@@ -35,6 +56,10 @@ export async function GET(request: NextRequest) {
     // But if hostId is specified, show all games for that host
     if (!status && !hostId) {
       query.status = { $in: ['upcoming', 'ongoing'] };
+      // Exclude games whose date has already passed
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      query.date = { $gte: today };
     }
 
     // Execute query with pagination

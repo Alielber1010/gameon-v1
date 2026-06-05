@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { TimePicker } from "@/components/ui/time-picker"
 import { CalendarIcon, MapPin, Users, Trophy, Clock, Loader2, ExternalLink, Image as ImageIcon, X } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -157,18 +156,16 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
         return
       }
 
-      // Validate date - must be at least 1 day in advance (not same day)
+      // Validate date - must not be in the past
       if (formData.date) {
         const today = new Date()
-        today.setHours(0, 0, 0, 0) // Reset time to start of day
-        
+        today.setHours(0, 0, 0, 0)
+
         const selectedDate = new Date(formData.date)
-        selectedDate.setHours(0, 0, 0, 0) // Reset time to start of day
-        
-        const daysDifference = Math.floor((selectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-        
-        if (daysDifference < 1) {
-          setError("Games must be created at least 1 day in advance. Please select a date from tomorrow onwards.")
+        selectedDate.setHours(0, 0, 0, 0)
+
+        if (selectedDate < today) {
+          setError("Please select today or a future date.")
           setIsLoading(false)
           return
         }
@@ -819,17 +816,16 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
                     onSelect={(date) => handleInputChange("date", date)}
                     initialFocus
                     disabled={(date) => {
-                      // Disable today and past dates - only allow dates from tomorrow onwards
                       const today = new Date()
                       today.setHours(0, 0, 0, 0)
                       const dateToCheck = new Date(date)
                       dateToCheck.setHours(0, 0, 0, 0)
-                      return dateToCheck <= today
+                      return dateToCheck < today
                     }}
                   />
                 </PopoverContent>
               </Popover>
-              <p className="text-xs text-gray-500">Games must be created at least 1 day in advance</p>
+              <p className="text-xs text-gray-500">Today or any future date</p>
             </div>
 
             <div className="space-y-2">
@@ -837,26 +833,35 @@ export function CreateGameModal({ isOpen, onClose, onSuccess }: CreateGameModalP
                 <Clock className="h-4 w-4" />
                 Start & End Time *
               </Label>
-              <TimePicker
-                startTime={formData.startTime}
-                endTime={formData.endTime}
-                onStartTimeChange={(time) => handleInputChange("startTime", time)}
-                onEndTimeChange={(time) => handleInputChange("endTime", time)}
-                label="Time Range"
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="startTime" className="text-xs text-gray-500">Start Time</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={formData.startTime}
+                    onChange={(e) => handleInputChange("startTime", e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="endTime" className="text-xs text-gray-500">End Time</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => handleInputChange("endTime", e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
               <p className="text-xs text-gray-500">Duration must be between 1 hour and 6 hours</p>
               {(() => {
                 if (!formData.startTime || !formData.endTime) return null
-                
                 const timeDifferenceHours = calculateTimeDifference(formData.startTime, formData.endTime)
                 if (timeDifferenceHours === null) return null
-                
-                if (timeDifferenceHours < 1) {
-                  return <p className="text-xs text-red-500">Duration must be at least 1 hour</p>
-                }
-                if (timeDifferenceHours > 6) {
-                  return <p className="text-xs text-red-500">Duration cannot exceed 6 hours</p>
-                }
+                if (timeDifferenceHours < 1) return <p className="text-xs text-red-500">Duration must be at least 1 hour</p>
+                if (timeDifferenceHours > 6) return <p className="text-xs text-red-500">Duration cannot exceed 6 hours</p>
                 return <p className="text-xs text-green-600">Duration: {timeDifferenceHours.toFixed(1)} hours</p>
               })()}
             </div>

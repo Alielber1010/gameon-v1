@@ -34,3 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# qa bot scripts
+/qa_bot/*.py
+/qa_bot/__pycache__/

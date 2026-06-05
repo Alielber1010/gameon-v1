@@ -174,14 +174,46 @@ export async function POST(
           // Increment games played
           user.gamesPlayed = (user.gamesPlayed || 0) + 1;
           
-          // Add to activity history
-          if (!user.activityHistory) {
-            user.activityHistory = [];
-          }
-          user.activityHistory.push({
-            gameId: game._id,
-            playedAt: new Date(),
+          // Check if activity history entry already exists for this game
+          const existingEntry = user.activityHistory?.find((entry: any) => {
+            const entryGameId = entry.gameId?.toString() || entry.gameId;
+            return entryGameId === game._id.toString();
           });
+          
+          if (!existingEntry) {
+            // Add complete activity history entry
+            if (!user.activityHistory) {
+              user.activityHistory = [];
+            }
+            
+            // Check if this player actually attended
+            const playerAttendance = game.attendance?.find((att: any) => {
+              const attUserId = att.userId?.toString() || att.userId;
+              return attUserId === playerId;
+            });
+            const attended = playerAttendance?.attended !== false; // Default to true if not specified
+            
+            user.activityHistory.push({
+              gameId: game._id,
+              sport: game.sport,
+              date: game.date,
+              attended: attended,
+              ratingGiven: false,
+              playersRated: [],
+              ratingsReceived: [],
+            });
+          } else {
+            // Update existing entry with attendance status if not set
+            if (existingEntry.attended === undefined) {
+              const playerAttendance = game.attendance?.find((att: any) => {
+                const attUserId = att.userId?.toString() || att.userId;
+                return attUserId === playerId;
+              });
+              existingEntry.attended = playerAttendance?.attended !== false;
+              existingEntry.sport = existingEntry.sport || game.sport;
+              existingEntry.date = existingEntry.date || game.date;
+            }
+          }
           
           await user.save();
         }

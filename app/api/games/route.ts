@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     // Build query
     const query: any = {};
     if (sport) query.sport = sport;
-    if (status) query.status = status;
 
     // Location filter: prefer coordinate proximity, fall back to city name regex
     if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
@@ -52,11 +51,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Only show upcoming and ongoing games by default (unless status is specified)
-    // But if hostId is specified, show all games for that host
-    if (!status && !hostId) {
+    // Status filter
+    if (status) {
+      query.status = status;
+    } else if (!hostId) {
       query.status = { $in: ['upcoming', 'ongoing'] };
-      // Exclude games whose date has already passed
+    }
+
+    // Always exclude past games when browsing upcoming games (not overridden by hostId or explicit non-upcoming status)
+    if (!hostId && (!status || status === 'upcoming' || status === 'ongoing')) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       query.date = { $gte: today };

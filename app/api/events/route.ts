@@ -36,7 +36,7 @@ export async function GET() {
         data: [],
         count: 0,
         cached: true,
-        message: 'No events synced yet. Click "Refresh Events" to sync from Dify.'
+        message: 'No events yet. Click "Refresh Events" to fetch the latest from ESPN.'
       })
     }
 

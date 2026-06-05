@@ -13,9 +13,40 @@ export default function EventsPage() {
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  // Fetch events from API
+  // Fetch events on load — auto-sync from ESPN if DB is empty
   useEffect(() => {
-    fetchEvents()
+    const init = async () => {
+      setLoading(true)
+      try {
+        const res = await fetch('/api/events')
+        const data = await res.json()
+        if (data.success && data.data?.length > 0) {
+          setEvents(data.data)
+          setLoading(false)
+        } else {
+          // Nothing in DB yet — auto-fetch from ESPN silently
+          setLoading(false)
+          setSyncing(true)
+          try {
+            const syncRes = await fetch('/api/events/sync', { method: 'POST' })
+            const syncData = await syncRes.json()
+            if (syncData.success) {
+              const refresh = await fetch('/api/events')
+              const refreshData = await refresh.json()
+              setEvents(refreshData.data || [])
+            }
+          } catch {
+            // ignore, user can retry manually
+          } finally {
+            setSyncing(false)
+          }
+        }
+      } catch {
+        setError('Failed to load events. Please try refreshing.')
+        setLoading(false)
+      }
+    }
+    init()
   }, [])
 
   const fetchEvents = async () => {
